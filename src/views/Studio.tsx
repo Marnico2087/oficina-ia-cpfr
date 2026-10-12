@@ -22,7 +22,8 @@ export function Studio({ tasks, selected, setSelected, selectedTask, setSelected
     const { t: tr } = useLanguage();
     const agents = useAgents();
     const [viewMode, setViewMode] = useState<'auto' | 'overview' | 'focus'>('auto');
-    const viewAll = viewMode === 'overview' || (viewMode === 'auto' && agents.length > 8);
+    // Introduce the whole team before the user chooses an individual workstation.
+    const viewAll = viewMode === 'overview' || (viewMode === 'auto' && agents.length > 1);
     const active = tasks.filter(t => t.status === 'running');
     const done = tasks.filter(t => t.status === 'completed');
     const focus = tasks.find(t => t.id === selectedTask)

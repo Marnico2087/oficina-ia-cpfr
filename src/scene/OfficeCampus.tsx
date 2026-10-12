@@ -19,11 +19,19 @@ function Planter({ x, z }: { x: number; z: number }) {
   </group>
 }
 
-function Panel({ x, y, z, w, h, color = '#5e87ab' }: { x: number; y: number; z: number; w: number; h: number; color?: string }) {
-  return <group position={[x, y, z]}>
-    <RoundedBox args={[w, h, .09]} radius={.05}><meshStandardMaterial color="#18263b" metalness={.32}/></RoundedBox>
-    <mesh position={[0, 0, .057]}><planeGeometry args={[w * .88, h * .78]}/><meshStandardMaterial color={color} emissive={color} emissiveIntensity={.18} roughness={.6}/></mesh>
-    {Array.from({ length: 3 }, (_, i) => <mesh key={i} position={[-w * .2, h * .22 - i * h * .18, .065]}><boxGeometry args={[w * (.28 + i * .08), .027, .015]}/><meshBasicMaterial color="#d7e7f2"/></mesh>)}
+function Panel({ x, z, w, h, color = '#5e87ab' }: { x: number; y: number; z: number; w: number; h: number; color?: string }) {
+  // Compact freestanding team noticeboard, sized like office furniture rather
+  // than a wall-sized monitor. Its legs make the prop physically plausible.
+  const boardW = Math.min(w, 1.55), boardH = Math.min(h, .72)
+  return <group position={[x, 1.65, z]}>
+    {[-boardW * .36, boardW * .36].map(offset => <mesh key={offset} position={[offset, -.82, -.035]}>
+      <boxGeometry args={[.06, 1.65, .07]}/><meshStandardMaterial color="#8a9cab" metalness={.32}/>
+    </mesh>)}
+    <RoundedBox args={[boardW, boardH, .075]} radius={.035}><meshStandardMaterial color="#ecf2f5" roughness={.84}/></RoundedBox>
+    <mesh position={[0, .18, .041]}><planeGeometry args={[boardW * .89, .12]}/><meshStandardMaterial color={color} roughness={.9}/></mesh>
+    {Array.from({ length: 3 }, (_, i) => <mesh key={i} position={[-boardW * .15, .038 - i * .12, .041]}>
+      <planeGeometry args={[boardW * (.54 + i * .07), .022]}/><meshBasicMaterial color="#889eaf"/>
+    </mesh>)}
   </group>
 }
 
@@ -55,36 +63,50 @@ function SectorRoom({ sector, preferences }: { sector: Sector; preferences: Offi
   const accent = preferences.sectorColors[id] || DEPARTMENTS.find(dep => dep.id === id)?.color || '#9aacc0'
   const palette = THEMES[preferences.theme]
   return <group position={[cx, 0, cz]}>
-    <RoundedBox args={[width, .29, depth]} radius={.13} position={[0, -.21, 0]} receiveShadow><meshStandardMaterial color={palette.floor} roughness={.91}/></RoundedBox>
-    <mesh position={[0, -.049, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[width - .55, depth - .55]}/><meshStandardMaterial color={palette.tile} roughness={.93}/></mesh>
-    <mesh position={[0, .014, -depth / 2 + .18]}><boxGeometry args={[width, .05, .26]}/><meshStandardMaterial color={preferences.accent} emissive={preferences.accent} emissiveIntensity={.08}/></mesh>
-    <mesh position={[0, .01, depth / 2 - .4]}><boxGeometry args={[width - 2, .035, .18]}/><meshStandardMaterial color={accent}/></mesh>
-    <mesh position={[0, 1.7, -depth / 2]}><boxGeometry args={[width, 3.55, .22]}/><meshStandardMaterial color={palette.wall}/></mesh>
-    {[-1, 0, 1].map(i => <group key={i} position={[i * 3.35, 2.55, -depth / 2 + .15]}>
-      <mesh><boxGeometry args={[2.75, 1.35, .038]}/><meshStandardMaterial color={palette.frame} emissive="#233e65" emissiveIntensity={.08}/></mesh>
-      <mesh position={[0, 0, .035]}><boxGeometry args={[2.58, 1.2, .015]}/><meshStandardMaterial color={palette.window} transparent opacity={.28} metalness={.6}/></mesh>
-      <mesh position={[0, 0, .06]}><boxGeometry args={[.045, 1.36, .03]}/><meshStandardMaterial color="#a5b9cc"/></mesh>
-    </group>)}
-    <mesh position={[-width / 2, 1.25, 0]}><boxGeometry args={[.1, 2.5, depth]}/><meshStandardMaterial color={palette.outline} transparent opacity={.26}/></mesh>
-    <mesh position={[width / 2, 1.25, 0]}><boxGeometry args={[.1, 2.5, depth]}/><meshStandardMaterial color={palette.outline} transparent opacity={.26}/></mesh>
-    <mesh position={[-width / 2 + 1.5, 2.05, depth / 2 - .05]}><boxGeometry args={[3, 1.3, .07]}/><meshStandardMaterial color="#7394ab" transparent opacity={.18}/></mesh>
-    <mesh position={[width / 2 - 1.5, 2.05, depth / 2 - .05]}><boxGeometry args={[3, 1.3, .07]}/><meshStandardMaterial color="#7394ab" transparent opacity={.18}/></mesh>
-    <mesh position={[0, 3.76, 0]}><boxGeometry args={[width * .62, .07, .21]}/><meshStandardMaterial color="#e6f5ff" emissive="#84c8e4" emissiveIntensity={1}/></mesh>
-    <pointLight position={[0, 3.5, 0]} intensity={depth > 13 ? 8 : 5} distance={Math.max(9, depth * .9)} color="#c3e2ff"/>
+    {/* One continuous office floor, with subtle team-colored zoning only. */}
+    <mesh position={[0, -.041, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[width - .28, depth - .28]}/>
+      <meshStandardMaterial color={palette.floor} transparent opacity={.18} roughness={.92} depthWrite={false}/>
+    </mesh>
+    <mesh position={[0, -.027, -depth / 2 + .27]}><boxGeometry args={[width - .55, .018, .13]}/><meshStandardMaterial color={accent} transparent opacity={.65}/></mesh>
+    <pointLight position={[0, 3.7, 0]} intensity={depth > 13 ? 2.4 : 1.6} distance={Math.max(9, depth * .9)} color="#e8f4ff"/>
     <DepartmentProps id={id} width={width} depth={depth}/>
-    <Planter x={-width / 2 + .85} z={depth / 2 - .7}/><Planter x={width / 2 - .85} z={depth / 2 - .7}/>
+    <Planter x={width / 2 - .8} z={-depth / 2 + .75}/>
+  </group>
+}
+
+function SharedLounge({ width, z, theme }: { width: number; z: number; theme: OfficePreferences['theme'] }) {
+  const tabletop = theme === 'midnight' ? '#9e8a7d' : theme === 'warm' ? '#d3ab86' : '#d6c4ac'
+  return <group position={[width / 2, 0, z]}>
+    {/* The meeting spot is outside all workstation routes and chair footprints. */}
+    <RoundedBox position={[0, .72, 0]} args={[2.25, .13, .98]} radius={.11} castShadow>
+      <meshStandardMaterial color={tabletop} roughness={.76}/>
+    </RoundedBox>
+    {[-.73, .73].map(x => <mesh key={x} position={[x, .36, 0]}>
+      <cylinderGeometry args={[.055, .07, .68, 10]}/><meshStandardMaterial color="#748395" metalness={.5}/>
+    </mesh>)}
+    {[-1, 1].map(side => <group key={side} position={[side * 1.62, 0, 0]} rotation={[0, side * Math.PI / 2, 0]}>
+      <RoundedBox position={[0, .47, 0]} args={[.7, .12, .72]} radius={.1} castShadow><meshStandardMaterial color="#758da3"/></RoundedBox>
+      <RoundedBox position={[0, .78, .31]} args={[.75, .63, .11]} radius={.075} castShadow><meshStandardMaterial color="#7897ac"/></RoundedBox>
+      <mesh position={[0, .23, 0]}><cylinderGeometry args={[.055, .08, .45, 8]}/><meshStandardMaterial color="#677a8b"/></mesh>
+    </group>)}
+    <mesh position={[0, .82, 0]}><cylinderGeometry args={[.16, .16, .055, 12]}/><meshStandardMaterial color="#f6f8f8"/></mesh>
+    <Planter x={Math.min(width / 2 - .8, 3.3)} z={.55}/>
   </group>
 }
 
 export function OfficeCampus({ layout, preferences }: { layout: OfficeLayout; preferences: OfficePreferences }) {
   const palette = THEMES[preferences.theme]
   return <group>
-    <mesh position={[layout.width / 2, -.46, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 3, .4, layout.depth + 3]}/><meshStandardMaterial color={palette.outer} roughness={.98}/></mesh>
+    <mesh position={[layout.width / 2, -.46, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 2.2, .7, layout.depth + 1.8]}/><meshStandardMaterial color={palette.outer} roughness={.98}/></mesh>
+    {/* One continuous ground plane connects every team bay into a shared studio. */}
+    <mesh position={[layout.width / 2, -.13, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 1.8, .16, layout.depth + 1.5]}/><meshStandardMaterial color={palette.tile} roughness={.91}/></mesh>
     {layout.passages.map((passage, index) => <group key={index} position={[passage.x, -.1, passage.z]}>
       <RoundedBox args={[passage.width, .18, passage.depth]} radius={.07} receiveShadow><meshStandardMaterial color={palette.tile}/></RoundedBox>
       <mesh position={[0, .096, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[Math.max(.35, passage.width - .45), Math.max(.35, passage.depth - .45)]}/><meshStandardMaterial color={preferences.accent} transparent opacity={.16}/></mesh>
     </group>)}
     {layout.sectors.map(sector => <SectorRoom key={sector.id} sector={sector} preferences={preferences}/>)}
-    <ambientLight intensity={.32} color="#b2d3f5"/>
+    {layout.seats.length > 1 && <SharedLounge width={layout.width} z={layout.depth - 1.73} theme={preferences.theme}/>}
+    <ambientLight intensity={.47} color="#e5efff"/>
   </group>
 }

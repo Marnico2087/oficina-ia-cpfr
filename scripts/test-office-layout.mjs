@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { makeOfficeLayout } from '../src/scene/officeLayout.ts'
 import { DEFAULT_AGENTS, makeAgent, validateAgent, validStoredAgents } from '../server/agents.mjs'
-import { makeWalkRoute, walkAt } from '../src/scene/officeMotion.ts'
+import { advanceMovement, CHAIR_Z, CHAIR_APPROACH_Z, createMovementState, makeWalkRoute, STAND_SIDE_X, STAND_Z, walkAt } from '../src/scene/officeMotion.ts'
 import { DEFAULT_OFFICE_PREFERENCES, normalizeOfficePreferences } from '../src/scene/officePreferences.ts'
 
 const departments = ['architecture', 'engineering', 'design', 'quality', 'research', 'operations', 'security', 'data', 'general']
@@ -30,10 +30,116 @@ for (const spacing of ['compact', 'regular', 'spacious']) {
         assert.ok(state.position[1] >= sector.center[2] - sector.depth / 2)
         assert.ok(state.position[1] <= sector.center[2] + sector.depth / 2 + 1.3)
       }
-      assert.deepEqual(walkAt(route, 12, 'off').position, [seat.position[0], seat.position[2]])
+      assert.deepEqual(walkAt(route, 12, 'off').position, [seat.position[0] + STAND_SIDE_X, seat.position[2] + STAND_Z])
     }
   })
 }
+
+test('walking paths stay outside workstation and chair footprints across multiple team sizes', () => {
+  for (const count of [1, 4, 20, 50, 100]) {
+    for (const spacing of ['compact', 'regular', 'spacious']) {
+      const layout = makeOfficeLayout(makeTeam(count), spacing)
+      for (const seat of layout.seats) {
+        const sector = layout.sectors.find(item => item.id === seat.sector)
+        const ordinal = layout.seats.filter(item => item.sector === seat.sector).indexOf(seat)
+        const route = makeWalkRoute(seat, sector, ordinal)
+        for (let segment = 0; segment < route.points.length - 1; segment++) {
+          const [ax, az] = route.points[segment], [bx, bz] = route.points[segment + 1]
+          // Sample the entire segment, not only the endpoints (diagonal cuts
+          // through furniture are invisible to endpoint-only checks).
+          for (let sample = 0; sample <= 12; sample++) {
+            const t = sample / 12
+            const px = ax + (bx - ax) * t, pz = az + (bz - az) * t
+            for (const other of layout.seats.filter(item => item.sector === seat.sector)) {
+              const dx = Math.abs(px - other.position[0]), dz = pz - other.position[2]
+              assert.ok(!(dx < 1.35 && dz > -.98 && dz < .55), `desk collision at ${count}/${spacing}/${seat.agent.id}`)
+              assert.ok(!(dx < .55 && dz > .65 && dz < 1.67), `chair collision at ${count}/${spacing}/${seat.agent.id}`)
+            }
+          }
+        }
+      }
+    }
+  }
+})
+
+test('compact floor retains clear chair approaches, back-row walkways and a separate shared lounge', () => {
+  for (const count of [2, 4, 20, 50, 100, 250]) {
+    for (const spacing of ['compact', 'regular', 'spacious']) {
+      const layout = makeOfficeLayout(makeTeam(count), spacing)
+      const farthestBayEdge = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2))
+      // Meeting furniture is centered in a strip behind the last team bay.
+      assert.ok(layout.depth - 1.73 - farthestBayEdge > 1.3, 'meeting table overlaps a team bay')
+      for (const seat of layout.seats) {
+        const sector = layout.sectors.find(item => item.id === seat.sector)
+        const ordinal = layout.seats.filter(item => item.sector === seat.sector).indexOf(seat)
+        const route = makeWalkRoute(seat, sector, ordinal)
+        const bayEnd = sector.center[2] + sector.depth / 2
+        assert.ok(bayEnd - route.points[3][1] > .75, 'rear route leaves the team bay')
+        assert.ok(route.points[3][1] - (seat.position[2] + CHAIR_Z + .55) > .6,
+          'rear walkway is too close to the last row of chairs')
+      }
+    }
+  }
+})
+
+test('work transitions return along walkways, sit at the monitor and rise coherently', () => {
+  const layout = makeOfficeLayout(makeTeam(4))
+  const seat = layout.seats[0]
+  const route = makeWalkRoute(seat, layout.sectors.find(item => item.id === seat.sector), 0)
+  let state = createMovementState(route)
+  for (let i = 0; i < 300; i++) state = advanceMovement(state, route, .05, false, 'lively', 0)
+  assert.equal(state.stage, 'walking')
+  let sawReturn = false, sawSit = false, sawApproach = false
+  for (let i = 0; i < 900 && state.stage !== 'working'; i++) {
+    state = advanceMovement(state, route, .05, true, 'lively', 0)
+    sawReturn ||= state.stage === 'returning'
+    sawApproach ||= state.stage === 'approaching'
+    sawSit ||= state.stage === 'sitting'
+    if (state.stage === 'sitting') {
+      assert.ok(Math.abs(state.position[0] - seat.position[0]) < .001, 'avatar cannot slide sideways through chair while sitting')
+      assert.ok(state.position[1] >= seat.position[2] + CHAIR_APPROACH_Z - .001)
+      assert.ok(state.position[1] <= seat.position[2] + CHAIR_Z + .001)
+    }
+  }
+  assert.equal(sawReturn, true)
+  assert.equal(sawApproach, true)
+  assert.equal(sawSit, true)
+  assert.equal(state.stage, 'working')
+  assert.equal(state.seated, 1)
+  assert.ok(Math.abs(state.position[0] - seat.position[0]) < .001)
+  assert.ok(Math.abs(state.position[1] - seat.position[2] - CHAIR_Z) < .001)
+  let sawLeave = false
+  for (let i = 0; i < 150; i++) {
+    state = advanceMovement(state, route, .05, false, 'off', 0)
+    sawLeave ||= state.stage === 'leaving'
+    if (state.stage === 'standing') break
+  }
+  assert.equal(sawLeave, true)
+  assert.equal(state.stage, 'standing')
+  assert.equal(state.seated, 0)
+  assert.deepEqual(state.position, route.points[0])
+})
+
+test('cancelling and restarting tasks during chair approach preserves continuous movement', () => {
+  const layout = makeOfficeLayout(makeTeam(1))
+  const route = makeWalkRoute(layout.seats[0], layout.sectors[0], 0)
+  let state = createMovementState(route)
+  const advance = active => {
+    const before = state.position
+    state = advanceMovement(state, route, .05, active, 'subtle', 0)
+    assert.ok(Math.hypot(state.position[0] - before[0], state.position[1] - before[1]) < .08, 'position jumped between animation phases')
+  }
+  for (let i = 0; i < 14; i++) advance(true)
+  assert.equal(state.stage, 'approaching')
+  for (let i = 0; i < 12; i++) advance(false)
+  assert.equal(state.stage, 'leaving')
+  for (let i = 0; i < 120 && state.stage !== 'working'; i++) advance(true)
+  assert.equal(state.stage, 'working')
+  for (let i = 0; i < 6; i++) advance(false)
+  assert.equal(state.stage, 'rising')
+  for (let i = 0; i < 40 && state.stage !== 'working'; i++) advance(true)
+  assert.equal(state.stage, 'working')
+})
 
 test('appearance preferences reject invalid persisted values and accept user selections', () => {
   assert.deepEqual(normalizeOfficePreferences(null), DEFAULT_OFFICE_PREFERENCES)

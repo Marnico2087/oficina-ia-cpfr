@@ -1,22 +1,30 @@
 import type { Seat, Sector } from './officeLayout'
 import type { OfficeMotion } from './officePreferences'
 
-type Point = [number, number]
+export type Point = [number, number]
 export type Route = { points: Point[]; durations: number[]; total: number }
+export const CHAIR_Z = 1.10
+export const STAND_Z = 1.18
+export const STAND_SIDE_X = .98
+export const AISLE_Z = 2.32
+export const DESK_FACING = Math.PI
+// Walking to the front of the chair and sitting are separate phases.
+export const CHAIR_APPROACH_Z = .62
 
 // Paths use the unobstructed front edge of each desk row, the side aisle,
 // and the lounge strip at the sector entrance. Every agent has a home seat.
 export function makeWalkRoute(seat: Seat, sector: Sector, slot: number): Route {
   const [x, , z] = seat.position
-  const sideAisle = sector.center[0] - sector.width / 2 + .73
-  const front = sector.center[2] + sector.depth / 2 - .85
-  const loungeX = sector.center[0] + (slot % 4 - 1.5) * .68
+  const leftEdge = sector.center[0] - sector.width / 2
+  const sideAisle = leftEdge + .62
+  const front = sector.center[2] + sector.depth / 2 - .88
+  const loungeX = leftEdge + 1.2 + (slot % 3) * .65
   const points: Point[] = [
-    [x, z], [x, z + 1.15], [sideAisle, z + 1.15], [sideAisle, front],
-    [loungeX, front], [sideAisle, front], [sideAisle, z + 1.15], [x, z + 1.15], [x, z],
+    [x + STAND_SIDE_X, z + STAND_Z], [x + STAND_SIDE_X, z + AISLE_Z], [sideAisle, z + AISLE_Z], [sideAisle, front],
+    [loungeX, front], [sideAisle, front], [sideAisle, z + AISLE_Z], [x + STAND_SIDE_X, z + AISLE_Z], [x + STAND_SIDE_X, z + STAND_Z],
   ]
   const durations = points.slice(1).map((point, index) => Math.hypot(point[0] - points[index][0], point[1] - points[index][1]) / 1.3)
-  return { points, durations, total: durations.reduce((sum, seconds) => sum + seconds, 0) + 9 }
+  return { points, durations, total: durations.reduce((sum, seconds) => sum + seconds, 0) + 12 }
 }
 
 export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { position: Point; walking: boolean; social: boolean; facing: number } {
@@ -46,4 +54,152 @@ export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { p
     remaining -= duration
   }
   return { position: home, walking: false, social: false, facing: Math.PI }
+}
+
+export type MovementStage = 'standing' | 'walking' | 'chatting' | 'returning' | 'approaching' | 'sitting' | 'working' | 'rising' | 'leaving'
+export type MovementState = {
+  stage: MovementStage; position: Point; facing: number; seated: number; walking: boolean; social: boolean
+  cursor: number; waypoints: Point[]; wait: number; idleTime: number
+}
+
+export function createMovementState(route: Route): MovementState {
+  return { stage: 'standing', position: [...route.points[0]], facing: DESK_FACING, seated: 0,
+    walking: false, social: false, cursor: 0, waypoints: [], wait: 0, idleTime: 0 }
+}
+
+// A task event changes the movement goal, not the avatar's coordinates.
+// While returning, the agent retraces the aisle network instead of cutting
+// diagonally through chairs or desks. All pose transitions advance by delta.
+export function advanceMovement(state: MovementState, route: Route, dt: number, active: boolean,
+  motion: OfficeMotion, ordinal: number): MovementState {
+  const next: MovementState = { ...state, position: [...state.position], waypoints: [...state.waypoints] }
+  const step = Math.min(Math.max(0, dt), .05)
+  const home = route.points[0]
+  const chair: Point = [home[0] - STAND_SIDE_X, home[1] + CHAIR_Z - STAND_Z]
+  const front: Point = [chair[0], home[1] + CHAIR_APPROACH_Z - STAND_Z]
+  const side: Point = [home[0], front[1]]
+  next.walking = false
+  next.social = false
+  if ((active || motion === 'off') && (next.stage === 'walking' || next.stage === 'chatting')) {
+    const outbound = next.cursor <= 4
+    next.waypoints = outbound ? route.points.slice(0, next.cursor).reverse() : route.points.slice(next.cursor)
+    next.cursor = 0
+    next.stage = 'returning'
+  }
+  if (active && next.stage === 'rising') next.stage = 'sitting'
+  if (active && next.stage === 'leaving') {
+    next.stage = 'approaching'
+    next.waypoints = [side, front]
+    next.cursor = 0
+  }
+  if (active && next.stage === 'standing') {
+    next.stage = 'approaching'
+    next.waypoints = [side, front]
+    next.cursor = 0
+    next.wait = 0
+  }
+  if (!active && next.stage === 'approaching') {
+    next.stage = 'leaving'
+    next.waypoints = [side, home]
+    next.cursor = 0
+  }
+  if (!active && (next.stage === 'working' || next.stage === 'sitting')) { next.stage = 'rising'; next.wait = 0 }
+
+  if (next.stage === 'sitting' || next.stage === 'rising') {
+    const direction = next.stage === 'sitting' ? 1 : -1
+    next.seated = Math.min(1, Math.max(0, next.seated + direction * step / .72))
+    next.position = [chair[0], front[1] + (chair[1] - front[1]) * next.seated]
+    next.facing = DESK_FACING
+    if (next.seated === 1) next.stage = 'working'
+    if (next.seated === 0) {
+      next.stage = 'leaving'
+      next.waypoints = [side, home]
+      next.cursor = 0
+      next.idleTime = 0
+    }
+    return next
+  }
+  if (next.stage === 'working') {
+    next.position = [...chair]
+    next.seated = 1
+    next.facing = DESK_FACING
+    return next
+  }
+  if (next.stage === 'standing') {
+    next.position = [...home]
+    next.facing = DESK_FACING
+    if (!active && motion !== 'off') {
+      next.idleTime += step * (motion === 'subtle' ? .45 : 1)
+      if (next.idleTime > 12 + ordinal % 5 * 4) {
+        next.stage = 'walking'
+        next.cursor = 1
+      }
+    }
+    return next
+  }
+  if (next.stage === 'chatting') {
+    next.social = !active
+    next.wait += step
+    if (next.wait < 3.5) return next
+    next.stage = 'walking'
+    next.cursor = 5
+  }
+  if (next.stage === 'approaching' || next.stage === 'leaving') {
+    const target = next.waypoints[next.cursor]
+    if (!target) {
+      next.stage = next.stage === 'approaching' ? 'sitting' : 'standing'
+      next.cursor = 0
+      next.position = next.stage === 'sitting' ? [...front] : [...home]
+      next.facing = DESK_FACING
+      return next
+    }
+    const dx = target[0] - next.position[0], dz = target[1] - next.position[1]
+    const distance = Math.hypot(dx, dz)
+    const speed = 1.1 * step
+    if (distance > .0001) {
+      const travel = Math.min(distance, speed)
+      next.position = [next.position[0] + dx / distance * travel, next.position[1] + dz / distance * travel]
+      next.facing = Math.atan2(dx, dz)
+      next.walking = true
+    }
+    if (distance <= speed + .0001) {
+      next.position = [...target]
+      next.cursor++
+      if (next.cursor === next.waypoints.length) {
+        next.stage = next.stage === 'approaching' ? 'sitting' : 'standing'
+        next.cursor = 0
+        next.facing = DESK_FACING
+      }
+    }
+    return next
+  }
+  const returning = next.stage === 'returning'
+  const points = returning ? next.waypoints : route.points
+  if (returning && points.length === 0) {
+    next.stage = 'standing'
+    next.position = [...home]
+    return next
+  }
+  const target = points[next.cursor]
+  if (!target) { next.stage = 'standing'; next.position = [...home]; next.idleTime = 0; return next }
+  const dx = target[0] - next.position[0], dz = target[1] - next.position[1]
+  const distance = Math.hypot(dx, dz)
+  if (distance > .0001) {
+    const travel = Math.min(distance, 1.35 * step)
+    next.position = [next.position[0] + dx / distance * travel, next.position[1] + dz / distance * travel]
+    next.facing = Math.atan2(dx, dz)
+    next.walking = true
+  }
+  if (distance <= 1.35 * step + .0001) {
+    next.position = [...target]
+    next.cursor++
+    if (!returning && next.cursor === 5) { next.stage = 'chatting'; next.wait = 0; next.walking = false }
+    else if (next.cursor >= points.length) {
+      next.stage = 'standing'
+      next.cursor = 0
+      next.position = [...home]
+      next.idleTime = 0
+    }
+  }
+  return next
 }

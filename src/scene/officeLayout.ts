@@ -12,14 +12,19 @@ export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing =
   const groups = order.map(id => ({ id, agents: agents.filter(agent => agent.department === id) }))
     .filter(group => group.agents.length > 0)
   const active = groups.length ? groups : [{ id: 'general' as const, agents: [] as OfficeAgent[] }]
+  // Small teams share a compact coworking cluster instead of a long strip.
   const columns = active.length <= 2 ? active.length : active.length <= 4 ? 2 : 3
   const scale = spacing === 'compact' ? .91 : spacing === 'spacious' ? 1.2 : 1
-  const gap = 3.1
-  const zoneWidth = 11.7 * scale
+  // Open-plan bays share one floor. The gaps are circulation lanes, not doors.
+  const gap = 1.3 * scale
+  // Small teams sit together in one open row; do not reserve three empty desks
+  // for every single-agent department.
+  const busiest = Math.max(1, ...active.map(group => group.agents.length))
+  const zoneWidth = (agents.length <= 12 ? 5.15 + (Math.min(3, busiest) - 1) * 3.62 : 11.7) * scale
   const workstationPitch = 3.62 * scale
-  const rowPitch = 2.8 * scale
+  const rowPitch = 3.72 * scale
   const rowHeights: number[] = []
-  const depths = active.map(group => Math.max(8.5 * scale, 4.1 * scale + Math.ceil(group.agents.length / 3) * rowPitch))
+  const depths = active.map(group => Math.max(7.2 * scale, 3.15 * scale + Math.ceil(group.agents.length / 3) * rowPitch))
   depths.forEach((depth, i) => {
     const row = Math.floor(i / columns)
     rowHeights[row] = Math.max(rowHeights[row] || 0, depth)
@@ -39,10 +44,10 @@ export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing =
       const column = index % 3
       const line = Math.floor(index / 3)
       seats.push({ agent, sector: group.id,
-        position: [startX + 2.25 * scale + column * workstationPitch, 0, startZ + 2.65 * scale + line * rowPitch] })
+        position: [startX + 2.45 * scale + column * workstationPitch, 0, startZ + 2.65 * scale + line * rowPitch] })
     })
   }
-  // Bridge rooms physically across both axes, creating a traversable, modular campus.
+  // Keep circulation strips visually connected between open team bays.
   const passages: OfficeLayout['passages'] = []
   sectors.forEach((sector, index) => {
     const row = Math.floor(index / columns)
@@ -62,5 +67,6 @@ export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing =
     }
   })
   return { sectors, seats, passages, width: columns * (zoneWidth + gap) - gap,
-    depth: rowHeights.reduce((sum, depth) => sum + depth + gap, -gap) }
+    // Reserve a common lounge behind the circulation grid; it is not a workstation.
+    depth: rowHeights.reduce((sum, depth) => sum + depth + gap, -gap) + 3.45 * scale }
 }
