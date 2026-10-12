@@ -3,9 +3,44 @@ import assert from 'node:assert/strict'
 import { makeOfficeLayout } from '../src/scene/officeLayout.ts'
 import { DEFAULT_AGENTS, makeAgent, validateAgent, validStoredAgents } from '../server/agents.mjs'
 import { advanceMovement, CHAIR_Z, CHAIR_APPROACH_Z, createMovementState, makeWalkRoute, STAND_SIDE_X, STAND_Z, walkAt } from '../src/scene/officeMotion.ts'
+import { makeAvatarRigPose } from '../src/scene/avatarRig.ts'
 import { DEFAULT_OFFICE_PREFERENCES, normalizeOfficePreferences } from '../src/scene/officePreferences.ts'
 
 const departments = ['architecture', 'engineering', 'design', 'quality', 'research', 'operations', 'security', 'data', 'general']
+
+test('avatar rig connects all limbs and aligns seated hands with mouse and keyboard', () => {
+  for (const seated of [0, .25, .5, .75, 1]) {
+    for (const activity of ['idle', 'thinking', 'coding', 'researching', 'finishing', 'celebrating', 'error']) {
+      const rig = makeAvatarRigPose(seated, false, 1.25, activity)
+      assert.equal(rig.arms.length, 2)
+      assert.equal(rig.legs.length, 2)
+      for (const arm of rig.arms) {
+        assert.ok(Math.hypot(...arm.shoulder.map((v, i) => v - arm.elbow[i])) > .1)
+        assert.ok(Math.hypot(...arm.elbow.map((v, i) => v - arm.wrist[i])) > .1)
+        assert.ok([...arm.shoulder, ...arm.elbow, ...arm.wrist].every(Number.isFinite))
+      }
+      for (const leg of rig.legs) {
+        assert.ok(Math.hypot(...leg.hip.map((v, i) => v - leg.knee[i])) > .1)
+        assert.ok(Math.hypot(...leg.knee.map((v, i) => v - leg.ankle[i])) > .1)
+        assert.ok([...leg.hip, ...leg.knee, ...leg.ankle, ...leg.foot].every(Number.isFinite))
+      }
+    }
+  }
+  const seated = makeAvatarRigPose(1, false, 1.25, 'coding')
+  // Rotating the avatar by PI puts its -X hand on the desk's +X mouse.
+  const mouseHand = seated.arms[0].wrist
+  assert.ok(Math.abs(-mouseHand[0] - .75) < .06, 'hand misses mouse')
+  assert.ok(Math.abs(CHAIR_Z - mouseHand[2] - .16) < .06, 'hands miss desktop depth')
+  assert.ok(mouseHand[1] > 1.08 && mouseHand[1] < 1.19, 'hands must hover over desk surface')
+  assert.ok(Math.abs(seated.arms[1].wrist[0] - .4) < .02, 'other hand misses keyboard')
+  const idle = makeAvatarRigPose(0, false, 1.25, 'idle')
+  const chatting = makeAvatarRigPose(0, false, 1.25, 'idle', 1)
+  assert.ok(chatting.arms[1].wrist[1] - idle.arms[1].wrist[1] > .3, 'social mode should move the actual arm')
+  assert.deepEqual(makeAvatarRigPose(1, false, 1.25, 'coding', 1).arms, seated.arms,
+    'conversational gestures cannot interrupt work at the desk')
+  assert.deepEqual(makeAvatarRigPose(0, true, 1.25, 'idle', 1).arms, makeAvatarRigPose(0, true, 1.25, 'idle').arms,
+    'walking cannot animate social gestures')
+})
 function makeTeam(count) {
   return Array.from({ length: count }, (_, index) => makeAgent({
     name: `Agent ${index}`, role: `Role ${index}`, specialty: `Specialty ${index}`,

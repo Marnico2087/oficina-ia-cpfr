@@ -3,9 +3,10 @@ import { OrbitControls, OrthographicCamera, RoundedBox } from '@react-three/drei
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import type { Group, Mesh } from 'three'
 import { MathUtils, Vector3 } from 'three'
-import { type AgentId, type OfficeTask, type OfficeAgent } from '../types'
+import { type AgentId, type OfficeTask } from '../types'
 import { DEPARTMENTS, useAgents } from '../agents'
 import { OfficeCampus } from './OfficeCampus'
+import { OfficeAvatar } from './OfficeAvatar'
 import { makeOfficeLayout, type OfficeLayout, type Seat } from './officeLayout'
 import { advanceMovement, CHAIR_Z, createMovementState, makeWalkRoute, STAND_Z } from './officeMotion'
 import { useOfficePreferences } from './OfficePreferencesContext'
@@ -75,142 +76,6 @@ function Desk({ color, active, theme }: { color: string; active: boolean; theme:
   </group>
 }
 
-function Avatar({ agent, pose, selected, onSelect, walkRef, seatedRef }: {
-  agent: OfficeAgent; pose: AgentPose; selected: boolean; onSelect: () => void; walkRef: RefObject<number>; seatedRef: RefObject<number>
-}) {
-  const group = useRef<Group>(null)
-  const upper = useRef<Group>(null)
-  const head = useRef<Group>(null)
-  const left = useRef<Group>(null)
-  const right = useRef<Group>(null)
-  const legs = useRef<Group[]>([])
-  const shins = useRef<Group[]>([])
-  const halo = useRef<Mesh>(null)
-  const working = pose !== 'idle' && pose !== 'celebrating' && pose !== 'error'
-  useFrame(({ clock }, delta) => {
-    const t = clock.elapsedTime
-    const speed = Math.min(delta, .05)
-    const coding = pose === 'coding'
-    const research = pose === 'researching'
-    const success = pose === 'celebrating'
-    const failed = pose === 'error'
-    const seated = seatedRef.current
-    if (group.current) {
-      group.current.position.y = MathUtils.damp(group.current.position.y, success && !seated ? Math.abs(Math.sin(t * 7)) * .055 : 0, 8, speed)
-    }
-    if (upper.current) {
-      upper.current.position.y = -seated * .24 + (working && seated ? Math.sin(t * 1.8 + agent.name.length) * .009 : 0)
-      upper.current.rotation.x = MathUtils.damp(upper.current.rotation.x, failed ? .12 : research ? -.06 : 0, 6, speed)
-    }
-    if (head.current) {
-      head.current.rotation.z = MathUtils.damp(head.current.rotation.z, pose === 'thinking' ? -.19 + Math.sin(t * 1.1) * .04 : failed ? .18 : 0, 6, speed)
-      head.current.rotation.x = MathUtils.damp(head.current.rotation.x, research ? -.2 + Math.sin(t * 2) * .07 : pose === 'finishing' ? Math.sin(t * 3) * .09 : 0, 6, speed)
-    }
-    if (left.current) {
-      left.current.rotation.x = MathUtils.damp(left.current.rotation.x, seated ? -.15 + (coding ? Math.sin(t * 11) * .06 : 0) : success ? -2.2 : failed ? .25 : 0, 10, speed)
-      left.current.rotation.z = MathUtils.damp(left.current.rotation.z, success ? -.45 : failed ? -.15 : 0, 8, speed)
-      left.current.position.z = seated * .28
-      left.current.children[0].position.y = -.22 + seated * .24
-      left.current.children[1].position.y = -.38 + seated * .45
-      left.current.children[1].position.z = .41 + seated * .24
-    }
-    if (right.current) {
-      right.current.rotation.x = MathUtils.damp(right.current.rotation.x, seated ? -.15 + (coding ? Math.cos(t * 12) * .06 : 0) : success ? -2.2 : failed ? .25 : 0, 10, speed)
-      right.current.rotation.z = MathUtils.damp(right.current.rotation.z, success ? .45 : failed ? .15 : 0, 8, speed)
-      right.current.position.z = seated * .28
-      right.current.children[0].position.y = -.22 + seated * .24
-      right.current.children[1].position.y = -.38 + seated * .45
-      right.current.children[1].position.z = .41 + seated * .24
-    }
-    legs.current.forEach((leg, index) => {
-      if (leg) {
-        leg.position.y = .85 - seated * .17
-        leg.rotation.x = MathUtils.damp(leg.rotation.x, -seated * 1.4 + (1 - seated) * walkRef.current * Math.sin(t * 8.5 + index * Math.PI) * .42, 10, speed)
-      }
-      if (shins.current[index]) {
-        shins.current[index].rotation.x = MathUtils.damp(shins.current[index].rotation.x, seated * 1.4, 10, speed)
-        shins.current[index].children[1].position.y = -.36 - seated * .13
-      }
-    })
-    if (halo.current) halo.current.rotation.z = t * .35
-  })
-  const color = agent.color
-  return <group onClick={event => { event.stopPropagation(); onSelect() }}
-    onPointerOver={event => { event.stopPropagation(); document.body.style.cursor = 'pointer' }}
-    onPointerOut={() => { document.body.style.cursor = 'auto' }}>
-    {selected && <mesh ref={halo} position={[0, .025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[.66, .027, 8, 56]} /><meshBasicMaterial color={color} toneMapped={false} />
-    </mesh>}
-    <group ref={group}>
-      {[-1, 1].map((side, index) => <group key={side} ref={node => { if (node) legs.current[index] = node }} position={[side * .16, .85, -.13]}>
-        <mesh position={[0, -.20, 0]} castShadow><capsuleGeometry args={[.112, .23, 5, 8]}/><meshStandardMaterial color="#354961"/></mesh>
-        <group ref={node => { if (node) shins.current[index] = node }} position={[0, -.42, 0]}>
-          <mesh position={[0, -.18, 0]} castShadow><capsuleGeometry args={[.105, .20, 5, 8]}/><meshStandardMaterial color="#354961"/></mesh>
-          <mesh position={[0, -.36, .12]} castShadow><boxGeometry args={[.24, .12, .38]}/><meshStandardMaterial color="#27364c"/></mesh>
-        </group>
-      </group>)}
-      <group ref={upper}>
-      <group position={[0, 1.0, -.15]}>
-        <mesh castShadow><capsuleGeometry args={[.3, .28, 5, 10]} /><meshStandardMaterial color={color} roughness={.76} /></mesh>
-        <mesh position={[0, -.16, .265]}><boxGeometry args={[.15, .12, .03]} /><meshStandardMaterial color="#d5e5ee" /></mesh>
-      </group>
-      {[-1, 1].map(side => <group key={side} ref={side === -1 ? left : right} position={[side * .34, 1.17, .0]}>
-        <mesh position={[side * .1, -.22, .24]} rotation={[.85, 0, side * -.17]} castShadow>
-          <capsuleGeometry args={[.105, .31, 5, 9]} /><meshStandardMaterial color={color} /></mesh>
-        <mesh position={[side * .16, -.38, .41]}><sphereGeometry args={[.105, 9, 7]} /><meshStandardMaterial color="#eac7a5" /></mesh>
-      </group>)}
-      <group ref={head} position={[0, 1.68, 0]}>
-        <mesh castShadow><sphereGeometry args={[.285, 16, 12]} /><meshStandardMaterial color={agent.id === 'sentinel' ? '#b87e5d' : '#e8bfa0'} roughness={.75} /></mesh>
-        <mesh position={[0, .15, -.035]} castShadow><sphereGeometry args={[.294, 16, 9, 0, Math.PI * 2, 0, Math.PI * .52]} /><meshStandardMaterial color={agent.id === 'nova' ? '#35475a' : agent.id === 'pixel' ? '#8b4b42' : '#25263b'} /></mesh>
-        <mesh position={[.115, .02, .241]}><sphereGeometry args={[.021, 8, 6]} /><meshBasicMaterial color="#28344b" /></mesh>
-        <mesh position={[-.115, .02, .241]}><sphereGeometry args={[.021, 8, 6]} /><meshBasicMaterial color="#28344b" /></mesh>
-      </group>
-      </group>
-    </group>
-  </group>
-}
-
-function PhaseEffects({ pose, color, seatedRef }: { pose: AgentPose; color: string; seatedRef: RefObject<number> }) {
-  const orbit = useRef<Group>(null)
-  const anchor = useRef<Group>(null)
-  useFrame(({ clock }) => {
-    if (anchor.current) anchor.current.position.y = -seatedRef.current * .3
-    if (!orbit.current) return
-    orbit.current.rotation.y = clock.elapsedTime * (pose === 'celebrating' ? 2.8 : .8)
-    orbit.current.position.y = Math.sin(clock.elapsedTime * 2.5) * .045
-  })
-  return <group ref={anchor}>
-    {pose === 'thinking' && <group ref={orbit} position={[0, 1.93, 0]}>
-      {[0, 1, 2].map(i => <mesh key={i} position={[Math.cos(i * Math.PI * 2 / 3) * .25, i * .1, Math.sin(i * Math.PI * 2 / 3) * .25]}>
-        <sphereGeometry args={[.055 + i * .014, 10, 8]} /><meshBasicMaterial color="#f9d58a" toneMapped={false} />
-      </mesh>)}
-    </group>}
-    {pose === 'coding' && <group position={[0, 2.04, 0]}>
-      <mesh><boxGeometry args={[.53, .23, .04]}/><meshBasicMaterial color="#172b42" /></mesh>
-      {[-.08, 0, .08].map((y, i) => <mesh key={i} position={[-.08 + i * .025, y, .026]}>
-        <planeGeometry args={[.24 - i * .05, .024]}/><meshBasicMaterial color={i === 1 ? '#8df3c2' : '#5dc6e9'} />
-      </mesh>)}
-    </group>}
-    {pose === 'researching' && <group position={[.46, 1.74, .1]} rotation={[0, -.3, -.1]}>
-      <mesh><boxGeometry args={[.5, .57, .035]} /><meshBasicMaterial color="#263c60" /></mesh>
-      {[0, 1, 2, 3].map(i => <mesh key={i} position={[-.025, .17 - i * .11, .022]}>
-        <planeGeometry args={[.32 - (i % 2) * .09, .025]} /><meshBasicMaterial color={i === 0 ? '#d7c6ff' : '#729cce'} />
-      </mesh>)}
-    </group>}
-    {(pose === 'finishing' || pose === 'celebrating') && <group ref={orbit} position={[0, 1.9, 0]}>
-      <mesh rotation={[Math.PI / 2.5, 0, 0]}><torusGeometry args={[.36, .022, 6, 32]} /><meshBasicMaterial color="#7df2bc" toneMapped={false} /></mesh>
-      {(pose === 'celebrating' ? [0, 1, 2, 3, 4] : [0, 2]).map(i => <mesh key={i} position={[Math.cos(i * Math.PI * 2 / 5) * .45, Math.sin(i * Math.PI * 2 / 5) * .28, 0]}>
-        <octahedronGeometry args={[.09, 0]}/><meshBasicMaterial color={i % 2 ? '#fbe28b' : color} toneMapped={false} />
-      </mesh>)}
-    </group>}
-    {pose === 'error' && <group position={[0, 1.96, 0]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[.28, .035, 8, 32]}/><meshBasicMaterial color="#ff748d" toneMapped={false}/></mesh>
-      <mesh position={[0, 0, .03]}><boxGeometry args={[.035, .2, .03]}/><meshBasicMaterial color="#ffafbb" /></mesh>
-      <mesh position={[0, -.145, .03]}><sphereGeometry args={[.027, 8, 8]}/><meshBasicMaterial color="#ffafbb" /></mesh>
-    </group>}
-  </group>
-}
-
 function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferences, avatars }: {
   seat: Seat; sector: OfficeLayout['sectors'][number]; ordinal: number; selected: boolean; pose: AgentPose; onSelect: () => void; preferences: OfficePreferences; avatars: RefObject<Map<string, Group>>
 }) {
@@ -220,9 +85,9 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
   const movement = useRef(createMovementState(route))
   useEffect(() => { movement.current = createMovementState(route) }, [route])
   const traveler = useRef<Group>(null)
-  const speech = useRef<Group>(null)
   const walkRef = useRef(0)
   const seatedRef = useRef(0)
+  const socialRef = useRef(false)
   useFrame((_, delta) => {
     if (!traveler.current) return
     const frame = advanceMovement(movement.current, route, delta, working, preferences.motion, ordinal)
@@ -234,17 +99,12 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
     traveler.current.rotation.y += MathUtils.clamp(turn, -smoothing * 5, smoothing * 5)
     walkRef.current = frame.walking ? 1 : 0
     seatedRef.current = frame.seated
-    if (speech.current) speech.current.visible = Boolean(preferences.social && !working && frame.social && sector.count > 1)
+    socialRef.current = Boolean(preferences.social && !working && frame.social && sector.count > 1)
   })
   return <group position={position}>
     <Desk color={agent.color} active={working} theme={preferences.theme} />
     <group ref={node => { traveler.current = node; if (node) avatars.current.set(agent.id, node); else avatars.current.delete(agent.id) }} position={[0, 0, STAND_Z]} rotation={[0, Math.PI, 0]}>
-      <Avatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} seatedRef={seatedRef}/>
-      <PhaseEffects pose={pose} color={agent.color} seatedRef={seatedRef}/>
-      <group ref={speech} visible={false} position={[0, 2.36, 0]}>
-        <mesh><sphereGeometry args={[.26, 12, 9]}/><meshStandardMaterial color="#f9fdff" emissive="#badbf0" emissiveIntensity={.2}/></mesh>
-        {[-.12, 0, .12].map(x => <mesh key={x} position={[x, 0, .25]}><sphereGeometry args={[.035, 8, 6]}/><meshBasicMaterial color={agent.color}/></mesh>)}
-      </group>
+      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} seatedRef={seatedRef} socialRef={socialRef}/>
     </group>
   </group>
 }
