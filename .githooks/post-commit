@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+branch=$(git symbolic-ref --quiet --short HEAD || true)
+[ "$branch" = "main" ] || exit 0
+git remote get-url origin >/dev/null 2>&1 || exit 0
+echo 'Syncing public main to GitHub...'
+if ! git push -u origin main; then
+  echo 'GitHub sync failed. Local commit preserved; run git push origin main after fixing the error.' >&2
+fi

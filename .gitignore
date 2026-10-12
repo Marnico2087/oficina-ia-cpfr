@@ -1,0 +1,43 @@
+# Dependencies and generated build artifacts
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+
+# Local task history and private work
+.local/
+work/
+screenshots/
+logs/
+*.log
+*.tmp
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+credentials.json
+secrets.json
+*.secret
+*.local
+
+# Operating system and editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
