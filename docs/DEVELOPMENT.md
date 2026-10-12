@@ -49,8 +49,9 @@ These are optional **process environment variables**, not an automatically loade
 | `npm run verify:public` | Pre-push full validation |
 | `npm run smoke:browser` | Browser/WebGL and language regression tests with API + UI running |
 | `npm run smoke:live` | **Executes real Codex tasks and consumes usage** |
+| `npm run smoke:live-ui` | **Executes a real Codex task and consumes usage**; verifies Live mode from the browser to the final file |
 
-For the browser smoke test, set `CHROME_BIN` if Chrome is not installed in the default location. The test writes an ignored screenshot into `screenshots/`.
+For browser smoke tests, set `CHROME_BIN` if Chrome is not installed in the default location. The Demo test writes an ignored screenshot into `screenshots/`. The live UI test requires **both services running** and an authenticated Codex CLI; it writes only to a fresh ignored `.local/live-ui-smoke-*` folder and cancels its test task if validation fails. These live tests are opt-in and are never run in CI.
 
 ## Regular development and GitHub sync
 

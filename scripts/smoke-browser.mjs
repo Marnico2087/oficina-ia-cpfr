@@ -25,7 +25,9 @@ try {
   page.on('pageerror', err => errors.push(err.message))
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()) })
   await page.setViewport({ width: 1440, height: 960, deviceScaleFactor: 1 })
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 30_000 })
+  // EventSource keeps a connection open; network-idle can time out even
+  // when the production app and 3D scene have loaded successfully.
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.waitForSelector('canvas', { timeout: 15_000 })
   await new Promise(resolve => setTimeout(resolve, 2500))
   assert.match(await page.title(), /Agent Office/i)
@@ -104,7 +106,7 @@ try {
   }
   await page.select('#interface-language', 'pt-BR')
   assert.match(await page.$eval('h1', el => el.textContent), /Configurações do espaço de trabalho/)
-  await page.reload({ waitUntil: 'networkidle2' })
+  await page.reload({ waitUntil: 'domcontentloaded' })
   assert.equal(await page.$eval('html', el => el.lang), 'pt-BR', 'Locale should persist across reload')
   assert.match(await page.$eval('h1', el => el.textContent), /Central de controle/)
   assert.match(await page.$eval('.scene-phase-label[data-agent="nova"]', el => el.textContent), /Programando/, '3D phase badge should follow the locale')
@@ -130,5 +132,8 @@ try {
   assert.deepEqual(errors, [], 'Browser console errors: ' + errors.join(' | '))
   console.log(JSON.stringify({ ok: true, screenshot, renderState, demoPoses, phaseTransitionsChecked: true, languagesChecked: options.length, persistedLanguage: 'pt-BR', mobileSettings: true, pagesChecked: ['studio', 'modal', 'tasks', 'team', 'settings'] }, null, 2))
 } finally {
-  await browser.close()
+  // The live event stream and WebGL renderer can delay Chromium shutdown.
+  // Avoid leaving smoke-test processes running indefinitely after assertions.
+  const watchdog = setTimeout(() => browser.process()?.kill(), 10_000)
+  try { await browser.close() } finally { clearTimeout(watchdog) }
 }

@@ -16,6 +16,7 @@
     "test:behavior": "node --test scripts/test-agent-behavior.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "smoke:live": "node scripts/smoke-live.mjs",
+    "smoke:live-ui": "node scripts/smoke-live-ui.mjs",
     "check:public": "node scripts/check-public.mjs",
     "verify:public": "npm run check:public && npm run lint && npm run test:behavior && npm run build && npm run check:server"
   },

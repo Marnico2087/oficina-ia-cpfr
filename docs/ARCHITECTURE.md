@@ -31,7 +31,9 @@ The Studio execution inspector reuses task data from the same SSE snapshots. Its
 
 The 3D workstations also use those task snapshots. `src/scene/agentBehavior.ts` maps a running task phase to a character pose, or displays a celebration/error reaction for eight seconds after a completed/failed task. The scene temporarily prioritizes a recent terminal event over another running task on the same agent so that the reaction remains visible. After the reaction ends, the currently running task is shown again. Status labels are translated in the selected locale; demo mode drives the same animation system from simulated events. These gestures represent **reported task states**, not continuous observation of the agent's keyboard, reasoning or filesystem activity.
 
-The browser uses the EventSource API to receive snapshots. The server stores bounded task history in `.local/tasks.json`, which can include the prompts, workspace paths, and short command output excerpts. It is intentionally private and excluded from version control.
+The browser uses the EventSource API to receive snapshots. The server stores bounded task history in `.local/tasks.json`, which can include the prompts, workspace paths, and short command output excerpts. It is intentionally private and excluded from version control. The browser smoke tests wait for the rendered UI rather than for a fully idle network, since the event stream is designed to stay connected.
+
+The studio loads the 3D renderer on demand. Production builds split the Three.js engine into separately cached JavaScript chunks, reducing the size of the scene's own chunk and avoiding a full re-download of the engine after ordinary interface changes. This does not eliminate the cost of loading Three.js on the first visit.
 
 ## Directories
 
@@ -56,4 +58,4 @@ The API accepts a local workspace path and starts a tool with code-execution cap
 
 ## Known limitations
 
-3D rendering depends on WebGL/GPU/browser drivers. The 3D scene is loaded separately; its JavaScript bundle is larger than the rest of the interface. Automatic translations can require correction by native speakers. Real Codex execution requires your own CLI authentication and follows its separate usage/approval policies.
+3D rendering depends on WebGL/GPU/browser drivers, and the first visit still downloads the 3D engine. Automatic translations can require correction by native speakers. Real Codex execution requires your own CLI authentication and follows its separate usage/approval policies.
