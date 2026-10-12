@@ -39,7 +39,16 @@ function BadgeProjector({ overlayId, seats, sectors, avatars }: { overlayId: str
     for (const seat of seats) {
       const avatar = avatars.current.get(seat.agent.id)
       if (avatar) {
+        const label = labels.current.get(seat.agent.id)
+        if (label) {
+          label.dataset.movementStage = String(avatar.userData.movementStage || 'standing')
+          label.dataset.walking = String(Boolean(avatar.userData.walking))
+        }
         avatar.getWorldPosition(point.current)
+        if (label) {
+          label.dataset.worldX = point.current.x.toFixed(3)
+          label.dataset.worldZ = point.current.z.toFixed(3)
+        }
         place(seat.agent.id, point.current.x, point.current.y + 2.28, point.current.z)
       }
     }
@@ -54,16 +63,41 @@ function Desk({ color, active, theme }: { color: string; active: boolean; theme:
     if (monitor.current) (monitor.current.material as { emissiveIntensity?: number }).emissiveIntensity = active ? .33 + Math.sin(state.clock.elapsedTime * 2.7) * .14 : .08
   })
   return <group>
+    {/* One workstation is a complete, grounded furniture cluster. The low
+        carpet defines each desk without blocking a neighbouring aisle. */}
+    <mesh position={[0, -.037, .23]} receiveShadow>
+      <boxGeometry args={[2.96, .028, 2.83]}/>
+      <meshStandardMaterial color={theme === 'midnight' ? '#405264' : theme === 'warm' ? '#dfd2c6' : '#cedce7'} roughness={1}/>
+    </mesh>
+    <mesh position={[0, -.019, 1.57]}>
+      <boxGeometry args={[2.85, .008, .055]}/><meshStandardMaterial color={color} roughness={.93}/>
+    </mesh>
     {/* Chair faces the near edge of the desk, with the backrest behind the worker. */}
     <RoundedBox position={[0, .65, CHAIR_Z]} args={[.82, .13, .83]} radius={.12} castShadow><meshStandardMaterial color="#4b6079" roughness={.78}/></RoundedBox>
     <RoundedBox position={[0, 1.05, CHAIR_Z + .43]} args={[.87, .76, .13]} radius={.12} castShadow><meshStandardMaterial color="#536c89" roughness={.82}/></RoundedBox>
     <mesh position={[0, .34, CHAIR_Z]}><cylinderGeometry args={[.07, .09, .57, 10]}/><meshStandardMaterial color="#58667b" metalness={.4}/></mesh>
     <mesh position={[0, .1, CHAIR_Z]}><boxGeometry args={[1.02, .08, .12]}/><meshStandardMaterial color="#39465d"/></mesh>
     <mesh position={[0, .1, CHAIR_Z]}><boxGeometry args={[.12, .08, .94]}/><meshStandardMaterial color="#39465d"/></mesh>
+    {[-1, 1].map(side => <group key={`chair-arm-${side}`} position={[side * .49, 0, CHAIR_Z]}>
+      <mesh position={[0, .76, -.03]}><boxGeometry args={[.07, .23, .07]}/><meshStandardMaterial color="#4d6075"/></mesh>
+      <RoundedBox position={[0, .88, -.07]} args={[.11, .065, .46]} radius={.026}><meshStandardMaterial color="#364658"/></RoundedBox>
+    </group>)}
+    {[0, 1, 2, 3].map(i => <mesh key={`caster-${i}`} position={[Math.cos(i * Math.PI / 2) * .45, .085, CHAIR_Z + Math.sin(i * Math.PI / 2) * .45]} rotation={[0, Math.PI / 2 * i, Math.PI / 2]}>
+      <cylinderGeometry args={[.085, .085, .095, 12]}/><meshStandardMaterial color="#303c50"/></mesh>)}
     <RoundedBox position={[0, .95, -.22]} args={[2.5, .16, 1.32]} radius={.065} castShadow receiveShadow><meshStandardMaterial color={theme === 'midnight' ? '#a48b78' : theme === 'warm' ? '#d6b79b' : '#e5eaf0'} roughness={.72} /></RoundedBox>
+    <mesh position={[0, .855, .425]}><boxGeometry args={[2.37, .022, .038]}/><meshStandardMaterial color={color} roughness={.83}/></mesh>
     {[-1.04, 1.04].map(x => [-.66, .25].map(z => <mesh key={`${x}-${z}`} position={[x, .48, z]} castShadow>
       <boxGeometry args={[.09, .92, .09]} /><meshStandardMaterial color="#556079" metalness={.45} />
     </mesh>))}
+    {/* Side storage, pinned notes, pen cup and a closed notebook keep the desk
+        recognizable as a lived-in work surface. All items rest on furniture. */}
+    <RoundedBox position={[-.91, .59, -.19]} args={[.40, .53, .49]} radius={.027} castShadow>
+      <meshStandardMaterial color={theme === 'midnight' ? '#495569' : '#acbdc9'} roughness={.8}/>
+    </RoundedBox>
+    {[.48, .65].map(y => <group key={y} position={[-.91, y, .062]}>
+      <mesh><boxGeometry args={[.3, .12, .012]}/><meshStandardMaterial color="#e3e9ed"/></mesh>
+      <mesh position={[0, 0, .011]}><boxGeometry args={[.085, .012, .018]}/><meshStandardMaterial color="#6d7b8b"/></mesh>
+    </group>)}
     <mesh position={[0, 1.3, -.59]}><boxGeometry args={[.08, .45, .09]} /><meshStandardMaterial color="#5e6478" /></mesh>
     <RoundedBox position={[0, 1.58, -.64]} args={[1.42, .87, .09]} radius={.045} castShadow><meshStandardMaterial color="#101c2c" /></RoundedBox>
     <mesh ref={monitor} position={[0, 1.58, -.583]}><planeGeometry args={[1.29, .75]} /><meshStandardMaterial color={color} emissive={color} emissiveIntensity={.3} roughness={.3} /></mesh>
@@ -72,9 +106,20 @@ function Desk({ color, active, theme }: { color: string; active: boolean; theme:
       <planeGeometry args={[.28 + (i % 3) * .16, .022]} /><meshBasicMaterial color={i === 0 ? color : i === 3 ? '#7b9eba' : '#3d5b79'} />
     </mesh>)}
     <RoundedBox position={[0, 1.051, .16]} args={[1, .035, .34]} radius={.022}><meshStandardMaterial color="#2d354a" /></RoundedBox>
-    <mesh position={[.75, 1.063, .16]}><cylinderGeometry args={[.1, .1, .04, 12]} /><meshStandardMaterial color="#242d3a" /></mesh>
+    {Array.from({length: 4}, (_,row) => Array.from({length: 8}, (_,col) => <mesh key={`key-${row}-${col}`} position={[-.375 + col * .103, 1.072, .048 + row * .073]}>
+      <boxGeometry args={[.078, .008, .05]}/><meshStandardMaterial color="#9eacc0" roughness={.76}/>
+    </mesh>))}
+    <mesh position={[.59, 1.063, .16]}><cylinderGeometry args={[.1, .1, .04, 12]} /><meshStandardMaterial color="#242d3a" /></mesh>
     <mesh position={[-.85, 1.038, -.4]}><cylinderGeometry args={[.15, .15, .016, 16]}/><meshStandardMaterial color="#b5bdc8" roughness={.8}/></mesh>
     <mesh position={[-.85, 1.12, -.4]}><cylinderGeometry args={[.12, .10, .14, 12]}/><meshStandardMaterial color={color}/></mesh>
+    <RoundedBox position={[.85, 1.052, -.31]} args={[.43, .035, .26]} radius={.018} castShadow>
+      <meshStandardMaterial color="#f5f0df" roughness={.9}/>
+    </RoundedBox>
+    <mesh position={[.85, 1.074, -.31]}><boxGeometry args={[.35, .004, .17]}/><meshStandardMaterial color="#cbd9e5"/></mesh>
+    <mesh position={[1.03, 1.13, -.44]}><cylinderGeometry args={[.074, .085, .19, 10]}/><meshStandardMaterial color="#6f88a0"/></mesh>
+    {[-.02, .02].map((offset, i) => <mesh key={i} position={[1.03 + offset, 1.28, -.44]} rotation={[0, 0, offset * 2]}>
+      <cylinderGeometry args={[.011, .011, .21, 7]}/><meshStandardMaterial color={i ? '#ffd58f' : '#90c5cf'}/>
+    </mesh>)}
   </group>
 }
 
@@ -96,6 +141,8 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
     const previousPosition = movement.current.position
     const frame = advanceMovement(movement.current, route, delta, working, preferences.motion, ordinal)
     movement.current = frame
+    traveler.current.userData.movementStage = frame.stage
+    traveler.current.userData.walking = frame.walking
     if (frame.walking) {
       const distance = Math.hypot(frame.position[0] - previousPosition[0], frame.position[1] - previousPosition[1])
       gaitRef.current += distance * (Math.PI * 2 / 1.2)

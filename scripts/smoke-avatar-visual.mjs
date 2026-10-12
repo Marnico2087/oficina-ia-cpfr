@@ -45,6 +45,7 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.crew-card').length === 4)
   await mkdir('work', { recursive: true })
 
+  let zoomed = false
   const focus = async index => {
     await page.$$eval('.crew-card', (cards, number) => cards[number]?.click(), index)
     await sleep(450)
@@ -52,7 +53,10 @@ try {
     const rect = await frame.boundingBox()
     assert.ok(rect, 'Office frame must be visible')
     await page.mouse.move(rect.x + rect.width * .52, rect.y + rect.height * .53)
-    for (let i = 0; i < 8; i++) await page.mouse.wheel({ deltaY: -240 })
+    if (!zoomed) {
+      for (let i = 0; i < 8; i++) await page.mouse.wheel({ deltaY: -240 })
+      zoomed = true
+    }
     await sleep(450)
     return frame
   }
@@ -80,12 +84,22 @@ try {
   await capture(0, 'thinking-close')
   await capture(0, 'thinking-front', { face: true })
   await capture(2, 'standing-idle')
-  // Preserve real snapshots of the gait over time rather than only an idle
-  // pose. Several samples fall during the agent's automatic office walk.
+  // Wait for the actual 3D avatar to enter a walking stage before capturing.
+  // A fixed-delay screenshot used to pass while the agent remained idle.
+  await page.waitForFunction(() => document.querySelector('.scene-phase-label[data-agent="pixel"]')?.dataset.walking === 'true',
+    { polling: 'raf', timeout: 60000 })
+  const walkingSamples = []
   for (let index = 0; index < 8; index++) {
-    await sleep(1850)
+    await sleep(170)
+    const sample = await page.$eval('.scene-phase-label[data-agent="pixel"]', el => ({
+      x: Number(el.dataset.worldX), z: Number(el.dataset.worldZ), walking: el.dataset.walking === 'true',
+    }))
+    walkingSamples.push(sample)
     await (await page.$('.scene-frame')).screenshot({ path: resolve(`work/avatar-walk-cycle-${index + 1}.png`) })
   }
+  const travel = Math.hypot(walkingSamples.at(-1).x - walkingSamples[0].x, walkingSamples.at(-1).z - walkingSamples[0].z)
+  assert.ok(travel > .28, `Captured walk must show real position change; observed ${travel.toFixed(3)}m`)
+  assert.ok(walkingSamples.filter(item => item.walking).length >= 4, 'At least half the captured poses must be moving')
   await capture(2, 'idle-after-walking')
   const webgl = await page.$eval('canvas', el => {
     const context = el.getContext('webgl2')
@@ -93,7 +107,7 @@ try {
   })
   assert.deepEqual(errors, [], `Browser errors: ${errors.join(' | ')}`)
   assert.ok(webgl.active && !webgl.lost, 'WebGL context must remain available')
-  console.log(JSON.stringify({ avatarVisual: 'passed', captures: ['working-early', 'working-seated', 'working-close-unobstructed', 'thinking-close', 'thinking-front', 'standing-idle', ...Array.from({ length: 8 }, (_, index) => `walk-cycle-${index + 1}`), 'idle-after-walking'], webgl, consoleErrors: errors.length }))
+  console.log(JSON.stringify({ avatarVisual: 'passed', walkingMetersCaptured: Number(travel.toFixed(3)), captures: ['working-early', 'working-seated', 'working-close-unobstructed', 'thinking-close', 'thinking-front', 'standing-idle', ...Array.from({ length: 8 }, (_, index) => `walk-cycle-${index + 1}`), 'idle-after-walking'], webgl, consoleErrors: errors.length }))
 } finally {
   if (browser) {
     const watchdog = setTimeout(() => browser.process()?.kill(), 7000)

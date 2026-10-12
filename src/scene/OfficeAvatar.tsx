@@ -83,18 +83,18 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
     </mesh>}
     <group ref={model}>
       <group ref={torso}>
-        <RoundedBox position={[0, 1.155, -.045]} args={[.7, .70, .48]} radius={.21} castShadow>
+        <RoundedBox position={[0, 1.40, -.045]} args={[.7, .70, .48]} radius={.21} castShadow>
           <meshStandardMaterial color={agent.color} roughness={.88}/>
         </RoundedBox>
-        <RoundedBox position={[0, .825, -.055]} args={[.54, .23, .42]} radius={.09} castShadow>
+        <RoundedBox position={[0, 1.13, -.055]} args={[.54, .23, .42]} radius={.09} castShadow>
           <meshStandardMaterial color="#344b66" roughness={.9}/>
         </RoundedBox>
-        <mesh position={[0, 1.397, .214]}><boxGeometry args={[.13, .075, .014]}/><meshStandardMaterial color="#e9eef4"/></mesh>
-        {[-1, 1].map(side => <RoundedBox key={side} position={[side * .365, 1.38, -.02]} args={[.245, .255, .32]} radius={.105} castShadow>
+        <mesh position={[0, 1.635, .214]}><boxGeometry args={[.13, .075, .014]}/><meshStandardMaterial color="#e9eef4"/></mesh>
+        {[-1, 1].map(side => <RoundedBox key={side} position={[side * .365, 1.61, -.02]} args={[.245, .255, .32]} radius={.105} castShadow>
           <meshStandardMaterial color={agent.color} roughness={.9}/>
         </RoundedBox>)}
-        <mesh position={[0, 1.54, -.015]}><cylinderGeometry args={[.105, .105, .19, 10]}/><meshStandardMaterial color={skin}/></mesh>
-        <group ref={head} position={[0, 1.745, 0]}>
+        <mesh position={[0, 1.775, -.015]}><cylinderGeometry args={[.105, .105, .19, 10]}/><meshStandardMaterial color={skin}/></mesh>
+        <group ref={head} position={[0, 1.98, 0]}>
           <mesh castShadow><sphereGeometry args={[.275, 20, 16]}/><meshStandardMaterial color={skin} roughness={.83}/></mesh>
           <mesh position={[0, .105, -.018]} castShadow><sphereGeometry args={[.287, 20, 14, 0, Math.PI * 2, 0, Math.PI * .55]}/><meshStandardMaterial color={hair} roughness={.91}/></mesh>
           {[-1, 1].map(side => <group key={side}>

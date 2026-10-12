@@ -7,15 +7,35 @@ export type OfficeAmenity = { id: 'meeting' | 'coffee' | 'focus'; x: number; z: 
 export type OfficeLayout = { sectors: Sector[]; seats: Seat[]; width: number; depth: number; passages: { x: number; z: number; width: number; depth: number }[]; amenities: OfficeAmenity[] }
 
 // Placement grows by rows; neither the agent registry nor scene has a fixed seat limit.
-// Every agent is assigned to exactly one seat in the department they chose.
+// Every agent has exactly one seat; small teams share a common room.
 export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing = 'regular'): OfficeLayout {
+  const scale = spacing === 'compact' ? .91 : spacing === 'spacious' ? 1.2 : 1
+  // Small teams share one coherent studio. The agents retain their original
+  // departmental identities; "general" describes only their common room.
+  // Splitting four differently-skilled colleagues into four large individual
+  // rooms was the main cause of the visually empty, disconnected office.
+  if (agents.length <= 6) {
+    const columns = Math.min(3, Math.max(1, agents.length))
+    const rows = Math.ceil(agents.length / columns)
+    const width = (4.65 + (columns - 1) * 3.46) * scale
+    // The second row must begin behind the previous row's walking corridor.
+    // Using the old 3.62 pitch made agents walk straight through the next desk.
+    const rowPitch = 4.7
+    const workDepth = (5.65 + (rows - 1) * rowPitch) * scale
+    const sharedDepth = agents.length >= 3 ? 3.35 * scale : .75 * scale
+    const sector: Sector = { id: 'general', center: [width / 2, 0, workDepth / 2], width, depth: workDepth, count: agents.length }
+    const seats: Seat[] = agents.map((agent, i) => ({ agent, sector: 'general',
+      position: [(2.23 + i % columns * 3.46) * scale, 0, (2.18 + Math.floor(i / columns) * rowPitch) * scale],
+    }))
+    return { sectors: [sector], seats, width, depth: workDepth + sharedDepth, passages: [],
+      amenities: agents.length >= 3 ? [{ id: 'meeting', x: width / 2, z: workDepth + sharedDepth / 2 }] : [] }
+  }
   const order: Department[] = ['engineering', 'architecture', 'design', 'quality', 'research', 'data', 'security', 'operations', 'general']
   const groups = order.map(id => ({ id, agents: agents.filter(agent => agent.department === id) }))
     .filter(group => group.agents.length > 0)
   const active = groups.length ? groups : [{ id: 'general' as const, agents: [] as OfficeAgent[] }]
   // Small teams share a compact coworking cluster instead of a long strip.
   const columns = active.length <= 3 ? active.length : active.length <= 6 ? 2 : 3
-  const scale = spacing === 'compact' ? .91 : spacing === 'spacious' ? 1.2 : 1
   // Open-plan bays share one floor. The gaps are circulation lanes, not doors.
   const gap = 1.3 * scale
   // Small teams sit together in one open row; do not reserve three empty desks

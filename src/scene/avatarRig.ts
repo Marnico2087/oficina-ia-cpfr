@@ -28,17 +28,21 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
     const phase = Math.sin(gaitPhase + (side === 1 ? Math.PI : 0)) * stride
     const talking = side === 1 ? gesture * (.82 + .18 * Math.sin(seconds * 3)) : 0
     // The workstation faces -Z, so its local +X mouse is on the avatar's -X.
-    const wristX = side === -1 ? -.4 - seated * .33 : .4
+    // The mouse is on the worker's left after the workstation's 180 degree
+    // rotation. Neither seated hand needs to extend an entire metre.
+    const wristX = side === -1 ? -.4 - seated * .19 : .4 - seated * .14
     const contemplation = side === 1 ? thinking : 0
     // Bring the free hand to the chin while thinking. The other hand stays on
     // the mouse, and the forearm remains connected to its moving elbow.
-    const baseWristY = .82 + seated * .32 + talking * .43
-    const baseWristZ = .12 + seated * .835 + phase * .2 + talking * .35
+    const baseWristY = 1.02 + seated * .065 + talking * .43
+    const baseWristZ = .12 + seated * .66 + phase * .2 + talking * .35
     return {
-      shoulder: [side * .37, 1.39 - seated * .08, -.02] as RigPoint,
+      // The shoulders and pelvis descend together as a single body when the
+      // character sits. The forearms then reach the fixed desktop height.
+      shoulder: [side * .37, 1.66 - seated * .4, -.02] as RigPoint,
       elbow: [side * (.44 + seated * .06) - contemplation * .04,
-        1.055 + seated * .06 + talking * .09 + contemplation * .16,
-        .025 + seated * .39 - phase * .08 + talking * .09 + contemplation * .07] as RigPoint,
+        1.28 - seated * .24 + talking * .09 + contemplation * .16,
+        .025 + seated * .43 - phase * .08 + talking * .09 + contemplation * .07] as RigPoint,
       wrist: [wristX - talking * .045 - contemplation * .26,
         baseWristY + contemplation * (1.50 - baseWristY) + (typing && side === 1 ? Math.sin(seconds * 12) * .016 : 0),
         baseWristZ + contemplation * (.27 - baseWristZ) + (typing && side === 1 ? Math.cos(seconds * 12) * .014 : 0)] as RigPoint,
@@ -50,18 +54,18 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
     const step = Math.sin(phase)
     // Feet stay on the ground during the support phase. Only the swinging
     // leg lifts, using a smooth arc tied to actual distance traveled.
-    const lift = Math.pow(Math.max(0, step), 1.5) * .095 * stride
-    const footZ = .13 - Math.cos(phase) * .155 * stride
+    const lift = Math.pow(Math.max(0, step), 1.5) * .11 * stride
+    const footZ = .11 - Math.cos(phase) * .145 * stride
     // The ankle sits INSIDE the shoe collar instead of behind the heel. The
     // standing pelvis is high enough for nearly straight legs, while the
     // seated pelvis drops to the chair cushion without detaching the thigh.
-    const ankle: RigPoint = [side * .17, .19 + lift, (footZ - .075) * (1 - seated) + .56 * seated]
-    const hip: RigPoint = [side * .165, .975 - seated * .24, -.04]
+    const ankle: RigPoint = [side * .17, .19 + lift, (footZ - .075) * (1 - seated) + .60 * seated]
+    const hip: RigPoint = [side * .165, 1.16 - seated * .4, -.04]
     // Solve the same two fixed-length bones for standing, walking and sitting.
     // Interpolating an arbitrary seated knee used to stretch the limbs.
     const dy = ankle[1] - hip[1], dz = ankle[2] - hip[2]
     const distance = Math.max(.0001, Math.hypot(dy, dz))
-    const femur = .435, shin = .43
+    const femur = .51, shin = .50
     const along = (femur * femur - shin * shin + distance * distance) / (2 * distance)
     const reach = Math.sqrt(Math.max(0, femur * femur - along * along))
     const normalY = -dz / distance, normalZ = dy / distance
@@ -77,13 +81,13 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
       hip,
       knee: walkingKnee,
       ankle,
-      foot: [side * .17, .082 + lift, footZ * (1 - seated) + .635 * seated] as RigPoint,
+      foot: [side * .17, .082 + lift, footZ * (1 - seated) + .675 * seated] as RigPoint,
     }
   }) as [Leg, Leg]
   return {
-    torsoDrop: seated * .08,
-    headPitch: activity === 'researching' ? -.09 : activity === 'error' ? .14 : 0,
-    headRoll: activity === 'thinking' ? Math.sin(seconds * 1.2) * .035 : gesture * Math.sin(seconds * 1.7) * .045,
+    torsoDrop: seated * .4,
+    headPitch: activity === 'researching' ? -.09 : activity === 'error' ? .14 : stride * Math.sin(gaitPhase * 2) * .018,
+    headRoll: activity === 'thinking' ? Math.sin(seconds * 1.2) * .035 : gesture * Math.sin(seconds * 1.7) * .045 + stride * Math.sin(gaitPhase) * .018,
     bob: 0,
     shoePitch,
     arms,

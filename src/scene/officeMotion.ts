@@ -3,20 +3,22 @@ import type { OfficeMotion } from './officePreferences'
 
 export type Point = [number, number]
 export type Route = { points: Point[]; durations: number[]; total: number }
-export const CHAIR_Z = 1.10
+export const CHAIR_Z = .94
 export const STAND_Z = 1.18
 export const STAND_SIDE_X = .98
 export const AISLE_Z = 2.32
 export const DESK_FACING = Math.PI
 // Walking to the front of the chair and sitting are separate phases.
-export const CHAIR_APPROACH_Z = .62
+export const CHAIR_APPROACH_Z = .56
 
 // Paths use the unobstructed front edge of each desk row, the side aisle,
 // and the lounge strip at the sector entrance. Every agent has a home seat.
 export function makeWalkRoute(seat: Seat, sector: Sector, slot: number): Route {
   const [x, , z] = seat.position
   const leftEdge = sector.center[0] - sector.width / 2
-  const sideAisle = leftEdge + .62
+  // Compact shared rooms have a narrower left margin than department bays.
+  // Keep the avatar's shoulders outside the adjacent workstation footprint.
+  const sideAisle = leftEdge + (sector.id === 'general' && sector.width <= 14 ? .42 : .62)
   const front = sector.center[2] + sector.depth / 2 - .88
   const loungeX = leftEdge + 1.2 + (slot % 3) * .65
   const points: Point[] = [

@@ -29,12 +29,12 @@ test('avatar rig connects all limbs and aligns seated hands with mouse and keybo
   const seated = makeAvatarRigPose(1, false, 1.25, 'coding')
   // Rotating the avatar by PI puts its -X hand on the desk's +X mouse.
   const mouseHand = seated.arms[0].wrist
-  assert.ok(Math.abs(-mouseHand[0] - .75) < .06, 'hand misses mouse')
+  assert.ok(Math.abs(-mouseHand[0] - .59) < .06, 'hand misses mouse')
   assert.ok(Math.abs(CHAIR_Z - mouseHand[2] - .16) < .06, 'hands miss desktop depth')
   assert.ok(mouseHand[1] > 1.08 && mouseHand[1] < 1.19, 'hands must hover over desk surface')
-  assert.ok(Math.abs(seated.arms[1].wrist[0] - .4) < .02, 'other hand misses keyboard')
+  assert.ok(Math.abs(seated.arms[1].wrist[0] - .26) < .02, 'other hand misses keyboard')
   const thinking = makeAvatarRigPose(1, false, 1.25, 'thinking')
-  assert.ok(Math.abs(thinking.arms[1].wrist[0] - .14) < .025, 'thinking hand must reach chin horizontally')
+  assert.ok(Math.abs(thinking.arms[1].wrist[0]) < .025, 'thinking hand must reach chin horizontally')
   assert.ok(Math.abs(thinking.arms[1].wrist[1] - 1.50) < .025, 'thinking hand must reach chin vertically')
   assert.ok(Math.abs(thinking.arms[1].wrist[2] - .27) < .025, 'thinking hand must be near face')
   assert.deepEqual(thinking.arms[0], seated.arms[0], 'thinking must keep mouse hand at desk')
@@ -61,11 +61,11 @@ test('walking shoes use alternating planted steps with stable leg lengths', () =
     for (const leg of pose.legs) {
       const femur = Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i]))
       const shin = Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i]))
-      assert.ok(Math.abs(femur - .435) < .001, 'femur stretches while walking')
-      assert.ok(Math.abs(shin - .43) < .001, 'shin stretches while walking')
+      assert.ok(Math.abs(femur - .51) < .001, 'femur stretches while walking')
+      assert.ok(Math.abs(shin - .50) < .001, 'shin stretches while walking')
       assert.ok(leg.foot[1] >= .082 - 1e-7, 'shoe clips the floor')
       assert.ok(Math.abs(leg.ankle[2] - (leg.foot[2] - .075)) < 1e-6, 'shoe collar detached from ankle')
-      assert.ok(leg.knee[1] > .45 && leg.knee[1] < .8, 'walking knee bends into crouch')
+      assert.ok(leg.knee[1] > .60 && leg.knee[1] < .83, 'walking knee bends into crouch')
     }
   }
   const stopped = makeAvatarRigPose(0, 0, 0, 'idle', 0, 0, 2)
@@ -77,10 +77,14 @@ test('walking shoes use alternating planted steps with stable leg lengths', () =
   for (const seated of [0, .2, .5, .8, 1]) {
     const pose = makeAvatarRigPose(seated, .4, 0, 'coding', 0, 0, 1.7)
     for (const leg of pose.legs) {
-      assert.ok(Math.abs(Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i])) - .435) < .001, 'thigh stretches during seating')
-      assert.ok(Math.abs(Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i])) - .43) < .001, 'shin stretches during seating')
+      assert.ok(Math.abs(Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i])) - .51) < .001, 'thigh stretches during seating')
+      assert.ok(Math.abs(Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i])) - .50) < .001, 'shin stretches during seating')
       assert.ok(Math.abs(leg.ankle[2] - (leg.foot[2] - .075)) < .001, 'shoe collar separates during seating')
+      assert.ok(leg.knee[1] > .63, 'knee sinks through chair cushion during sitting')
+      if (seated >= .8) assert.ok(leg.knee[2] > .36, 'knee does not clear the front of the chair during sitting')
+      assert.ok(Math.abs(leg.hip[1] - (1.16 - seated * .4)) < .001, 'hips do not travel with the pelvis')
     }
+    assert.ok(Math.abs(pose.torsoDrop - seated * .4) < .001, 'torso is detached from the hip during seating')
   }
 })
 function makeTeam(count) {
@@ -171,7 +175,9 @@ test('small department bays expand only to fit occupied desk columns', () => {
     const team = makeTeam(count).map(agent => ({ ...agent, department: 'engineering' }))
     const layout = makeOfficeLayout(team)
     const columns = Math.min(3, count)
-    assert.ok(Math.abs(layout.width - (5.15 + 3.62 * (columns - 1))) < .001)
+    const expected = count <= 6 ? 4.65 + 3.46 * (columns - 1) : 5.15 + 3.62 * (columns - 1)
+    assert.ok(Math.abs(layout.width - expected) < .001)
+    if (count <= 6) assert.equal(layout.sectors.length, 1, 'small teams must sit together')
     for (const seat of layout.seats) {
       const left = seat.position[0] - 1.25, right = seat.position[0] + 1.25
       assert.ok(left > 0 && right < layout.width, 'desk exceeds bay bounds')
@@ -276,7 +282,7 @@ for (const count of [0, 1, 2, 4, 10, 20, 50, 100, 1000]) {
     for (const seat of layout.seats) {
       const sector = layout.sectors.find(area => area.id === seat.sector)
       assert.ok(sector)
-      assert.equal(seat.sector, seat.agent.department)
+      assert.equal(seat.sector, count <= 6 ? 'general' : seat.agent.department)
       assert.ok(Math.abs(seat.position[0] - sector.center[0]) < sector.width / 2)
       assert.ok(Math.abs(seat.position[2] - sector.center[2]) < sector.depth / 2)
     }
