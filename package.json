@@ -1,13 +1,19 @@
 {
   "name": "agent-office",
   "private": false,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A live 3D mission control for coding agents",
   "type": "module",
   "bin": {
     "agent-office": "./bin/agent-office.mjs"
   },
-  "files": ["bin/", "server/", "dist/", "README.md", "LICENSE"],
+  "files": [
+    "bin/",
+    "server/",
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
@@ -22,7 +28,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "check:server": "node --check server/index.mjs && node --check bin/agent-office.mjs && node --check vscode-extension/extension.cjs",
     "test:behavior": "node --test scripts/test-agent-behavior.mjs scripts/test-providers.mjs scripts/test-cli.mjs scripts/test-vscode.mjs",
-    "package:vscode": "cd vscode-extension && npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --out ../work/agent-office-vscode.vsix",
+    "package:vscode": "node scripts/prepare-vscode-package.mjs && cd vscode-extension && npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --out ../work/agent-office-vscode.vsix",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "smoke:live": "node scripts/smoke-live.mjs",
     "smoke:live-ui": "node scripts/smoke-live-ui.mjs",
