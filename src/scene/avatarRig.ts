@@ -15,10 +15,11 @@ export type AvatarRigPose = {
 
 export function makeAvatarRigPose(seatedInput: number, walking: boolean, seconds: number,
   activity: 'idle' | 'thinking' | 'coding' | 'researching' | 'finishing' | 'celebrating' | 'error',
-  socialBlend = 0): AvatarRigPose {
+  socialBlend = 0, thinkingProgress = activity === 'thinking' ? 1 : 0): AvatarRigPose {
   const seated = Math.max(0, Math.min(1, seatedInput))
   const stride = (walking ? 1 - seated : 0)
   const typing = seated > .94 && activity === 'coding'
+  const thinking = seated * Math.max(0, Math.min(1, thinkingProgress))
   // Small conversational gestures are part of the actual arm rig, never
   // floating speech props. Sitting or walking always suppresses the gesture.
   const gesture = Math.max(0, Math.min(1, socialBlend)) * (1 - seated) * (walking ? 0 : 1)
@@ -27,12 +28,19 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean, seconds
     const talking = side === 1 ? gesture * (.82 + .18 * Math.sin(seconds * 3)) : 0
     // The workstation faces -Z, so its local +X mouse is on the avatar's -X.
     const wristX = side === -1 ? -.4 - seated * .33 : .4
+    const contemplation = side === 1 ? thinking : 0
+    // Bring the free hand to the chin while thinking. The other hand stays on
+    // the mouse, and the forearm remains connected to its moving elbow.
+    const baseWristY = .82 + seated * .32 + talking * .43
+    const baseWristZ = .12 + seated * .835 + phase * .2 + talking * .35
     return {
       shoulder: [side * .37, 1.39 - seated * .08, -.02] as RigPoint,
-      elbow: [side * (.44 + seated * .06), 1.055 + seated * .06 + talking * .09,
-        .025 + seated * .39 - phase * .08 + talking * .09] as RigPoint,
-      wrist: [wristX - talking * .045, .82 + seated * .32 + talking * .43 + (typing ? Math.sin(seconds * 12 + side) * .008 : 0),
-        .12 + seated * .835 + phase * .2 + talking * .35] as RigPoint,
+      elbow: [side * (.44 + seated * .06) - contemplation * .04,
+        1.055 + seated * .06 + talking * .09 + contemplation * .16,
+        .025 + seated * .39 - phase * .08 + talking * .09 + contemplation * .07] as RigPoint,
+      wrist: [wristX - talking * .045 - contemplation * .26,
+        baseWristY + contemplation * (1.50 - baseWristY) + (typing && side === 1 ? Math.sin(seconds * 12) * .016 : 0),
+        baseWristZ + contemplation * (.27 - baseWristZ) + (typing && side === 1 ? Math.cos(seconds * 12) * .014 : 0)] as RigPoint,
     }
   }) as [Arm, Arm]
   const legs = [-1, 1].map(side => {

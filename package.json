@@ -31,6 +31,7 @@
     "package:vscode": "node scripts/prepare-vscode-package.mjs && cd vscode-extension && npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --out ../work/agent-office-vscode.vsix",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "smoke:roster": "node scripts/smoke-roster.mjs",
+    "smoke:avatars": "node scripts/smoke-avatar-visual.mjs",
     "smoke:live": "node scripts/smoke-live.mjs",
     "smoke:live-ui": "node scripts/smoke-live-ui.mjs",
     "check:public": "node scripts/check-public.mjs",

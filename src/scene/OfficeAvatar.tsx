@@ -29,7 +29,7 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedR
   const head = useRef<Group>(null)
   const upperArms = useRef<Mesh[]>([])
   const lowerArms = useRef<Mesh[]>([])
-  const hands = useRef<Mesh[]>([])
+  const hands = useRef<Group[]>([])
   const elbows = useRef<Mesh[]>([])
   const thighs = useRef<Mesh[]>([])
   const shins = useRef<Mesh[]>([])
@@ -37,13 +37,15 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedR
   const shoes = useRef<Mesh[]>([])
   const halo = useRef<Mesh>(null)
   const socialBlend = useRef(0)
+  const thinkingBlend = useRef(0)
   const skin = agent.id === 'sentinel' ? '#c48c70' : agent.id === 'pixel' ? '#efc8ab' : '#dbad8c'
   const hair = agent.id === 'nova' ? '#2b4058' : agent.id === 'pixel' ? '#894f47' : agent.id === 'sentinel' ? '#41332f' : '#282b43'
 
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime
     socialBlend.current = MathUtils.damp(socialBlend.current, socialRef.current ? 1 : 0, 5, Math.min(delta, .05))
-    const rig = makeAvatarRigPose(seatedRef.current, walkRef.current > 0, t, pose, socialBlend.current)
+    thinkingBlend.current = MathUtils.damp(thinkingBlend.current, pose === 'thinking' ? 1 : 0, 4, Math.min(delta, .05))
+    const rig = makeAvatarRigPose(seatedRef.current, walkRef.current > 0, t, pose, socialBlend.current, thinkingBlend.current)
     if (model.current) model.current.position.y = rig.bob + (pose === 'celebrating' && seatedRef.current < .01 ? Math.abs(Math.sin(t * 5)) * .035 : 0)
     if (torso.current) {
       torso.current.position.y = -rig.torsoDrop
@@ -109,9 +111,20 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedR
         <mesh ref={node => { if (node) lowerArms.current[index] = node }} castShadow>
           <cylinderGeometry args={[.079, .086, 1, 10]}/><meshStandardMaterial color={skin} roughness={.86}/>
         </mesh>
-        <mesh ref={node => { if (node) hands.current[index] = node }} castShadow>
-          <boxGeometry args={[.155, .105, .165]}/><meshStandardMaterial color={skin} roughness={.84}/>
-        </mesh>
+        <group ref={node => { if (node) hands.current[index] = node }}>
+          <RoundedBox args={[.16, .085, .145]} radius={.034} castShadow>
+            <meshStandardMaterial color={skin} roughness={.86}/>
+          </RoundedBox>
+          {[-.056, -.019, .019, .056].map((x, finger) => <RoundedBox key={finger}
+            position={[x, -.012, .103 + (finger === 1 || finger === 2 ? .012 : 0)]}
+            args={[.031, .047, finger === 1 || finger === 2 ? .112 : .09]} radius={.015} castShadow>
+            <meshStandardMaterial color={skin} roughness={.86}/>
+          </RoundedBox>)}
+          <RoundedBox position={[side * .102, -.026, .012]} rotation={[0, side * .3, 0]}
+            args={[.058, .061, .085]} radius={.025} castShadow>
+            <meshStandardMaterial color={skin} roughness={.86}/>
+          </RoundedBox>
+        </group>
       </group>)}
       {[-1, 1].map((side, index) => <group key={`leg-${side}`}>
         <mesh ref={node => { if (node) thighs.current[index] = node }} castShadow>

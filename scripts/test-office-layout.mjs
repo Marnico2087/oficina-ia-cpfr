@@ -33,6 +33,17 @@ test('avatar rig connects all limbs and aligns seated hands with mouse and keybo
   assert.ok(Math.abs(CHAIR_Z - mouseHand[2] - .16) < .06, 'hands miss desktop depth')
   assert.ok(mouseHand[1] > 1.08 && mouseHand[1] < 1.19, 'hands must hover over desk surface')
   assert.ok(Math.abs(seated.arms[1].wrist[0] - .4) < .02, 'other hand misses keyboard')
+  const thinking = makeAvatarRigPose(1, false, 1.25, 'thinking')
+  assert.ok(Math.abs(thinking.arms[1].wrist[0] - .14) < .025, 'thinking hand must reach chin horizontally')
+  assert.ok(Math.abs(thinking.arms[1].wrist[1] - 1.50) < .025, 'thinking hand must reach chin vertically')
+  assert.ok(Math.abs(thinking.arms[1].wrist[2] - .27) < .025, 'thinking hand must be near face')
+  assert.deepEqual(thinking.arms[0], seated.arms[0], 'thinking must keep mouse hand at desk')
+  const beforeThought = makeAvatarRigPose(1, false, 1.25, 'thinking', 0, 0)
+  const midThought = makeAvatarRigPose(1, false, 1.25, 'thinking', 0, .5)
+  for (let axis = 0; axis < 3; axis++) {
+    const expected = (thinking.arms[1].wrist[axis] + beforeThought.arms[1].wrist[axis]) / 2
+    assert.ok(Math.abs(midThought.arms[1].wrist[axis] - expected) < .001, 'thinking hand transition must be continuous')
+  }
   const idle = makeAvatarRigPose(0, false, 1.25, 'idle')
   const chatting = makeAvatarRigPose(0, false, 1.25, 'idle', 1)
   assert.ok(chatting.arms[1].wrist[1] - idle.arms[1].wrist[1] > .3, 'social mode should move the actual arm')

@@ -114,6 +114,7 @@ npm run server
 | `npm run check:server` | Validate server syntax |
 | `npm run smoke:browser` | Smoke-test UI, visual 3D rendering and WebGL (both services running, Chrome needed) |
 | `npm run smoke:roster` | Start an isolated local office, test real agent-management UI, and check 0, 1, 20, 50 workstations without launching AI jobs (Chrome needed) |
+| `npm run smoke:avatars` | Capture isolated 3D character poses while working, thinking, sitting, and walking; check WebGL and browser errors (Chrome needed, images saved locally in ignored `work/`) |
 | `npm run smoke:live` | **Runs real Codex jobs and consumes tokens**; tests parallel isolated file writes and API protections |
 | `npm run smoke:live-ui` | **Runs a real Codex job and consumes tokens**; verifies launch, live 3D reactions, timeline and result through Chrome |
 
