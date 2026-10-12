@@ -27,6 +27,8 @@ Demo mode creates simulated tasks in browser memory. Live mode asks the local AP
 
 The API is local-only, unauthenticated, and restricted to loopback host/origins. It **must not be published or proxied to the internet or a LAN**. Real CLI jobs can change files in the selected workspace. Two jobs targeting the same directory may conflict.
 
+The Studio execution inspector reuses task data from the same SSE snapshots. Its timeline shows the last 35 server-recorded events per task in newest-first order; phase, elapsed time, error details and token usage are derived from those snapshots. The elapsed clock runs in the browser while a task is active, and stops after the task finishes. Selecting an avatar shows its running task or most recent task; selecting a task tile/history entry inspects that specific execution. Demo events are simulated.
+
 The browser uses the EventSource API to receive snapshots. The server stores bounded task history in `.local/tasks.json`, which can include the prompts, workspace paths, and short command output excerpts. It is intentionally private and excluded from version control.
 
 ## Directories
@@ -34,7 +36,7 @@ The browser uses the EventSource API to receive snapshots. The server stores bou
 | Path | Purpose |
 | --- | --- |
 | `src/App.tsx` | Application state, API connection and task lifecycle |
-| `src/components/` | Shared UI controls, task cards, avatars and display functions |
+| `src/components/` | Shared UI controls, task cards, avatars, execution inspector and display functions |
 | `src/views/` | Studio, Tasks, Team, Settings screens |
 | `src/scene/` | Lazily loaded interactive 3D office |
 | `src/locales/` | Translations, locale metadata and language provider |

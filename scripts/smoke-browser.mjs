@@ -72,6 +72,12 @@ try {
     }, text)
     assert.equal(clicked, true, 'Button missing: ' + text)
   }
+  assert.match(await page.$eval('.execution-inspector h3', el => el.textContent), /Execution inspector/);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.execution-log li').length), 3, 'Expected Nova activity timeline');
+  await page.$eval('.crew-card', el => el.click());
+  assert.match(await page.$eval('.execution-prompt', el => el.textContent), /Review architecture/);
+  await page.$eval('.crew-card:nth-child(2)', el => el.click());
+  assert.match(await page.$eval('.execution-prompt', el => el.textContent), /Build the dashboard/);
   await click('New task')
   await page.waitForSelector('[role=dialog]')
   assert.match(await page.$eval('[role=dialog] h2', el => el.textContent), /Create a task/)
@@ -100,6 +106,13 @@ try {
   await page.type('#prompt', 'Mission control')
   await page.$eval('.modal-bottom .primary-btn', el => el.click())
   assert.equal(await page.$eval('.task-tile strong', el => el.textContent), 'Mission control', 'User-entered prompts must not be translated')
+  assert.equal(await page.$eval('.execution-prompt', el => el.textContent), 'Mission control', 'Inspector must focus selected task')
+  assert.match(await page.$eval('.execution-inspector h3', el => el.textContent), /Inspetor de execução/)
+  await page.waitForFunction(() => document.querySelectorAll('.execution-log li').length >= 2, { timeout: 6000 })
+  assert.match(await page.$eval('.execution-stats', el => el.textContent), /Programando/, 'Demo phase should advance')
+  await click('Atividades e tarefas')
+  await page.$eval('.detail-task button[aria-label="Mostrar agente"]', el => el.click())
+  assert.equal(await page.$eval('.execution-prompt', el => el.textContent), 'Mission control', 'History must open the exact task')
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 })
   await page.$eval('.settings-nav', el => el.click())
   assert.match(await page.$eval('h1', el => el.textContent), /Configurações do espaço de trabalho/)

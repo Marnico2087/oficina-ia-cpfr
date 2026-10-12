@@ -151,7 +151,24 @@ QA Engineer
 Architecture & planning
 Code & implementation
 Design & experience
-Tests & reliability`.split('\n')
+Tests & reliability
+Execution inspector
+Current phase
+Elapsed time
+Last update
+Activity timeline
+No events recorded yet.
+No task assigned yet.
+Thinking
+Coding
+Researching
+Finishing
+Idle
+Error details
+Started
+Finished
+Input tokens
+Output tokens`.split('\n')
 
 export const languages = [
   { code: 'pt-BR', name: 'Português (Brasil)' },

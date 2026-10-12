@@ -56,6 +56,7 @@ npm run server
 - Rotate and zoom the 3D office; click an avatar to inspect their task.
 - Launch an independent Codex CLI task per avatar, targeting an absolute local project directory.
 - Stream command, file-change, research and progress events to the office through Server-Sent Events (SSE).
+- Inspect a selected agent's execution phase, live elapsed time, latest update, chronological event details, errors and token usage (when reported by Codex). Select a task from the feed or history to inspect that exact run.
 - Track finished jobs, latest status and task history; request cancellation.
 - Explore the whole interface in Demo mode without spending API tokens or executing commands.
 
@@ -78,7 +79,7 @@ The API listens only on `127.0.0.1:4300` and restricts browser origins. Each Cod
 
 `smoke:live` creates disposable test directories inside `.local/`; it runs two real Codex sessions, so it requires an authenticated CLI and can incur usage costs. Do not run it as part of an untrusted CI workflow.
 
-Task prompts, statuses and short output excerpts are saved locally in `.local/tasks.json`, excluded from Git. Avoid putting credentials in task instructions. The API has no user authentication and must **never** be exposed publicly on a network.
+Task prompts, statuses, phase updates, recent events (up to 35 per task) and short output excerpts are saved locally in `.local/tasks.json`, excluded from Git. Avoid putting credentials in task instructions. The API has no user authentication and must **never** be exposed publicly on a network.
 
 ## Roadmap
 
