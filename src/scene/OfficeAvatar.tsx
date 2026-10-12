@@ -143,6 +143,10 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
         </mesh>
         <RoundedBox ref={node => { if (node) shoes.current[index] = node }} args={[.275, .12, .39]} radius={.045} castShadow>
           <meshStandardMaterial color="#233248" roughness={.86}/>
+          {/* Raised shoe collar overlaps the ankle and shin on every frame. */}
+          <RoundedBox position={[0, .105, -.075]} args={[.205, .205, .22]} radius={.054} castShadow>
+            <meshStandardMaterial color="#233248" roughness={.86}/>
+          </RoundedBox>
           <mesh position={[0, -.055, .022]}><boxGeometry args={[.29, .035, .405]}/><meshStandardMaterial color="#c1cbd6" roughness={.84}/></mesh>
           <mesh position={[0, .062, .07]}><boxGeometry args={[.16, .011, .12]}/><meshStandardMaterial color="#dce4ed" roughness={.87}/></mesh>
         </RoundedBox>

@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => ({
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
+    // Live Codex jobs write private fixtures here; Windows may lock these files
+    // while Chrome or the CLI is using them. They are never front-end sources.
+    watch: { ignored: ['**/.local/**', '**/work/**'] },
     proxy: { '/api': 'http://127.0.0.1:4300' },
   },
 }))

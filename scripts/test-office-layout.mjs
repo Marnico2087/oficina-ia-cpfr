@@ -61,9 +61,11 @@ test('walking shoes use alternating planted steps with stable leg lengths', () =
     for (const leg of pose.legs) {
       const femur = Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i]))
       const shin = Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i]))
-      assert.ok(Math.abs(femur - .445) < .001, 'femur stretches while walking')
-      assert.ok(Math.abs(shin - .435) < .001, 'shin stretches while walking')
+      assert.ok(Math.abs(femur - .435) < .001, 'femur stretches while walking')
+      assert.ok(Math.abs(shin - .43) < .001, 'shin stretches while walking')
       assert.ok(leg.foot[1] >= .082 - 1e-7, 'shoe clips the floor')
+      assert.ok(Math.abs(leg.ankle[2] - (leg.foot[2] - .075)) < 1e-6, 'shoe collar detached from ankle')
+      assert.ok(leg.knee[1] > .45 && leg.knee[1] < .8, 'walking knee bends into crouch')
     }
   }
   const stopped = makeAvatarRigPose(0, 0, 0, 'idle', 0, 0, 2)
@@ -71,6 +73,14 @@ test('walking shoes use alternating planted steps with stable leg lengths', () =
   const settling = makeAvatarRigPose(0, .5, 0, 'idle', 0, 0, 2)
   for (let leg = 0; leg < 2; leg++) {
     assert.ok(Math.abs(settling.legs[leg].foot[2] - (stopped.legs[leg].foot[2] + moving.legs[leg].foot[2]) / 2) < 1e-8)
+  }
+  for (const seated of [0, .2, .5, .8, 1]) {
+    const pose = makeAvatarRigPose(seated, .4, 0, 'coding', 0, 0, 1.7)
+    for (const leg of pose.legs) {
+      assert.ok(Math.abs(Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i])) - .435) < .001, 'thigh stretches during seating')
+      assert.ok(Math.abs(Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i])) - .43) < .001, 'shin stretches during seating')
+      assert.ok(Math.abs(leg.ankle[2] - (leg.foot[2] - .075)) < .001, 'shoe collar separates during seating')
+    }
   }
 })
 function makeTeam(count) {

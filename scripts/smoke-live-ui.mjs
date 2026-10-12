@@ -37,7 +37,10 @@ try {
   await page.setViewport({ width: 1440, height: 960 })
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.waitForSelector('.scene-phase-label[data-agent="atlas"]', { timeout: 20_000 })
-  await page.waitForFunction(() => document.querySelector('.api-badge')?.textContent?.includes('CODEX READY'))
+  await page.waitForFunction(() => {
+    const badge = document.querySelector('.api-badge')
+    return badge?.classList.contains('on') && badge.textContent?.includes('READY')
+  })
   await page.$eval('.mode-btn', button => button.click())
   await page.waitForSelector('.mode-btn.live')
   await page.waitForFunction(() => document.querySelector('.scene-phase-label[data-agent="atlas"]')?.dataset.pose === 'idle')
@@ -65,7 +68,7 @@ try {
   assert.equal(response.status(), 201, JSON.stringify(body))
   taskId = body.task.id
 
-  await page.waitForFunction(text => document.querySelector('.execution-prompt')?.textContent === text, { timeout: 15_000 }, prompt)
+  await page.waitForFunction(text => document.querySelector('.execution-prompt')?.textContent?.includes(text), { timeout: 15_000 }, prompt)
   await page.waitForFunction(() => document.querySelectorAll('.execution-log li:not(.execution-no-events)').length >= 1, { timeout: 15_000 })
   await page.waitForFunction(() => document.querySelector('.execution-heading .pill-status.completed'), { timeout: 240_000 })
   await page.waitForFunction(() => window.__officeLivePoses?.includes('celebrating'), { timeout: 10_000 })

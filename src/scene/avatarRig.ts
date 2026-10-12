@@ -50,15 +50,18 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
     const step = Math.sin(phase)
     // Feet stay on the ground during the support phase. Only the swinging
     // leg lifts, using a smooth arc tied to actual distance traveled.
-    const lift = Math.pow(Math.max(0, step), 1.5) * .125 * stride
-    const footZ = .205 - Math.cos(phase) * .26 * stride
-    const ankle: RigPoint = [side * .17, .145 + lift, footZ - .18]
-    const hip: RigPoint = [side * .165, .81 - seated * .085, -.04]
-    // Two-bone knee solution in the walking plane. A constant femur and shin
-    // length prevents the legs stretching or detaching as the feet swing.
+    const lift = Math.pow(Math.max(0, step), 1.5) * .095 * stride
+    const footZ = .13 - Math.cos(phase) * .155 * stride
+    // The ankle sits INSIDE the shoe collar instead of behind the heel. The
+    // standing pelvis is high enough for nearly straight legs, while the
+    // seated pelvis drops to the chair cushion without detaching the thigh.
+    const ankle: RigPoint = [side * .17, .19 + lift, (footZ - .075) * (1 - seated) + .56 * seated]
+    const hip: RigPoint = [side * .165, .975 - seated * .24, -.04]
+    // Solve the same two fixed-length bones for standing, walking and sitting.
+    // Interpolating an arbitrary seated knee used to stretch the limbs.
     const dy = ankle[1] - hip[1], dz = ankle[2] - hip[2]
     const distance = Math.max(.0001, Math.hypot(dy, dz))
-    const femur = .445, shin = .435
+    const femur = .435, shin = .43
     const along = (femur * femur - shin * shin + distance * distance) / (2 * distance)
     const reach = Math.sqrt(Math.max(0, femur * femur - along * along))
     const normalY = -dz / distance, normalZ = dy / distance
@@ -69,13 +72,12 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
     // support phase rather than spinning the entire limb on every frame.
     // Only swing-phase shoes pitch: a planted sole must stay flat and avoid
     // clipping through the floor at heel/toe as the walk cycle changes.
-    shoePitch[index] = -Math.min(.105, lift * .78)
+    shoePitch[index] = -Math.min(.06, lift * .55)
     return {
       hip,
-      knee: [walkingKnee[0], walkingKnee[1] * (1 - seated) + .585 * seated,
-        walkingKnee[2] * (1 - seated) + .57 * seated] as RigPoint,
-      ankle: [ankle[0], ankle[1], ankle[2] * (1 - seated) + .655 * seated] as RigPoint,
-      foot: [side * .17, .082 + lift, footZ * (1 - seated) + .835 * seated] as RigPoint,
+      knee: walkingKnee,
+      ankle,
+      foot: [side * .17, .082 + lift, footZ * (1 - seated) + .635 * seated] as RigPoint,
     }
   }) as [Leg, Leg]
   return {

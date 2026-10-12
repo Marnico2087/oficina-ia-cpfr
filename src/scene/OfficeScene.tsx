@@ -73,7 +73,8 @@ function Desk({ color, active, theme }: { color: string; active: boolean; theme:
     </mesh>)}
     <RoundedBox position={[0, 1.051, .16]} args={[1, .035, .34]} radius={.022}><meshStandardMaterial color="#2d354a" /></RoundedBox>
     <mesh position={[.75, 1.063, .16]}><cylinderGeometry args={[.1, .1, .04, 12]} /><meshStandardMaterial color="#242d3a" /></mesh>
-    <mesh position={[-1.02, 1.055, -.54]}><cylinderGeometry args={[.12, .10, .13, 12]} /><meshStandardMaterial color={color} /></mesh>
+    <mesh position={[-.85, 1.038, -.4]}><cylinderGeometry args={[.15, .15, .016, 16]}/><meshStandardMaterial color="#b5bdc8" roughness={.8}/></mesh>
+    <mesh position={[-.85, 1.12, -.4]}><cylinderGeometry args={[.12, .10, .14, 12]}/><meshStandardMaterial color={color}/></mesh>
   </group>
 }
 
@@ -141,8 +142,8 @@ function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeat
     <OfficeCrowdLOD seats={distantSeats} theme={preferences.theme} working={distantWorking} onSelect={onSelect}/>
     {visibleSeats.map(seat => <Workstation key={seat.agent.id} seat={seat} sector={layout.sectors.find(sector => sector.id === seat.sector)!} ordinal={layout.seats.filter(item => item.sector === seat.sector).findIndex(item => item.agent.id === seat.agent.id)} selected={selected === seat.agent.id} pose={resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now)} onSelect={() => onSelect(seat.agent.id)} preferences={preferences} avatars={avatars}/>)}
     <BadgeProjector overlayId={overlayId} seats={visibleSeats} sectors={layout.sectors} avatars={avatars}/>
-    <OrthographicCamera key={cameraKey} makeDefault position={[target[0] + 15, target[1] + 17, target[2] + 19]} zoom={overview ? overviewZoom : 42} near={.1} far={Math.max(250, layout.width + layout.depth + 100)} />
-    <OrbitControls key={cameraKey} target={target} minPolarAngle={.25} maxPolarAngle={1.46} enablePan enableDamping dampingFactor={.08} minZoom={overview ? Math.min(2, overviewZoom) : 12} maxZoom={165} />
+    <OrthographicCamera key={`${cameraKey}-camera`} makeDefault position={[target[0] + 15, target[1] + 17, target[2] + 19]} zoom={overview ? overviewZoom : 42} near={.1} far={Math.max(250, layout.width + layout.depth + 100)} />
+    <OrbitControls key={`${cameraKey}-controls`} target={target} minPolarAngle={.25} maxPolarAngle={1.46} enablePan enableDamping dampingFactor={.08} minZoom={overview ? Math.min(2, overviewZoom) : 12} maxZoom={165} />
   </>
 }
 

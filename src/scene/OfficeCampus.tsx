@@ -20,13 +20,16 @@ function Planter({ x, z }: { x: number; z: number }) {
 }
 
 function Panel({ x, z, w, h, color = '#5e87ab' }: { x: number; y: number; z: number; w: number; h: number; color?: string }) {
-  // Compact freestanding team noticeboard, sized like office furniture rather
-  // than a wall-sized monitor. Its legs make the prop physically plausible.
+  // The noticeboard is a freestanding object with visible feet and crossbar.
   const boardW = Math.min(w, 1.55), boardH = Math.min(h, .72)
   return <group position={[x, 1.65, z]}>
     {[-boardW * .36, boardW * .36].map(offset => <mesh key={offset} position={[offset, -.82, -.035]}>
       <boxGeometry args={[.06, 1.65, .07]}/><meshStandardMaterial color="#8a9cab" metalness={.32}/>
     </mesh>)}
+    {[-boardW * .36, boardW * .36].map(offset => <mesh key={`foot-${offset}`} position={[offset, -1.625, .075]}>
+      <boxGeometry args={[.18, .055, .5]}/><meshStandardMaterial color="#788b9c" metalness={.25}/>
+    </mesh>)}
+    <mesh position={[0, -1.13, -.035]}><boxGeometry args={[boardW * .74, .045, .07]}/><meshStandardMaterial color="#8a9cab"/></mesh>
     <RoundedBox args={[boardW, boardH, .075]} radius={.035}><meshStandardMaterial color="#ecf2f5" roughness={.84}/></RoundedBox>
     <mesh position={[0, .18, .041]}><planeGeometry args={[boardW * .89, .12]}/><meshStandardMaterial color={color} roughness={.9}/></mesh>
     {Array.from({ length: 3 }, (_, i) => <mesh key={i} position={[-boardW * .15, .038 - i * .12, .041]}>
@@ -47,15 +50,24 @@ function Bookshelf({ x, z }: { x: number; z: number }) {
 
 function DepartmentProps({ id, width, depth }: { id: Department; width: number; depth: number }) {
   const back = -depth / 2 + .42
+  const boardX = -width / 2 + 1.02
   if (id === 'research') return <><Bookshelf x={-width / 2 + 1.35} z={back + 1}/><Bookshelf x={width / 2 - 1.45} z={back + 1}/><Panel x={0} y={2.12} z={back} w={2.25} h={1.1} color="#b3a3fa"/></>
-  if (id === 'engineering') return <><group position={[width / 2 - .95, 0, back + 1]}>{[0, 1, 2].map(i => <mesh key={i} position={[0, .47 + i * .65, 0]}><boxGeometry args={[.92, .58, .56]}/><meshStandardMaterial color="#1a304c" emissive="#215374" emissiveIntensity={.22}/></mesh>)}{[0, 1, 2].map(i => <mesh key={i} position={[.3, .44 + i * .65, .32]}><sphereGeometry args={[.036, 8, 8]}/><meshBasicMaterial color="#5de0c8"/></mesh>)}</group><Panel x={0} y={2.12} z={back} w={2.3} h={1.25} color="#287fa5"/></>
-  if (id === 'design') return <><group position={[width / 2 - 1.2, 0, back + 1]}><mesh position={[0, 1, 0]} rotation={[-.1, 0, 0]}><boxGeometry args={[1.13, 1.6, .08]}/><meshStandardMaterial color="#c7a594"/></mesh>{['#eea3a2', '#dbd18d', '#82bec5'].map((color, i) => <mesh key={color} position={[0, 1.5 - i * .45, .08]}><boxGeometry args={[.8, .32, .022]}/><meshStandardMaterial color={color}/></mesh>)}</group><Panel x={0} y={2.1} z={back} w={2.1} h={1.12} color="#bc8a87"/></>
-  if (id === 'quality') return <><Panel x={0} y={2.15} z={back} w={2.7} h={1.24} color="#3f966f"/><group position={[width / 2 - 1.4, 0, back + .9]}>{[0, 1, 2].map(i => <mesh key={i} position={[0, .5 + i * .44, 0]}><boxGeometry args={[1.6, .25, .55]}/><meshStandardMaterial color={i === 2 ? '#779a89' : '#535e71'}/></mesh>)}</group></>
-  if (id === 'architecture') return <><Panel x={0} y={2.1} z={back} w={3.4} h={1.5} color="#687fc0"/><mesh position={[width / 2 - 1.45, .79, back + .85]}><boxGeometry args={[1.7, 1.6, .08]}/><meshStandardMaterial color="#cfd7d8"/></mesh></>
+  if (id === 'engineering') return <><group position={[width / 2 - .95, 0, back + 1]}>
+    <mesh position={[0, 1.01, -.1]}><boxGeometry args={[1.04, 2.02, .64]}/><meshStandardMaterial color="#526577"/></mesh>
+    {[0, 1, 2].map(i => <mesh key={i} position={[0, .47 + i * .65, .28]}><boxGeometry args={[.92, .58, .12]}/><meshStandardMaterial color="#1a304c" emissive="#215374" emissiveIntensity={.22}/></mesh>)}
+    {[0, 1, 2].map(i => <mesh key={i} position={[.3, .44 + i * .65, .355]}><sphereGeometry args={[.036, 8, 8]}/><meshBasicMaterial color="#5de0c8"/></mesh>)}
+  </group><Panel x={boardX} y={2.12} z={back} w={2.3} h={1.25} color="#287fa5"/></>
+  if (id === 'design') return <><group position={[width / 2 - 1.2, 0, back + 1]}><mesh position={[0, 1, 0]} rotation={[-.1, 0, 0]}><boxGeometry args={[1.13, 1.6, .08]}/><meshStandardMaterial color="#c7a594"/></mesh>
+    {[-.4, .4].map(x => <mesh key={x} position={[x, .51, -.08]}><boxGeometry args={[.07, 1.02, .11]}/><meshStandardMaterial color="#8a766f"/></mesh>)}
+    {['#eea3a2', '#dbd18d', '#82bec5'].map((color, i) => <mesh key={color} position={[0, 1.5 - i * .45, .08]}><boxGeometry args={[.8, .32, .022]}/><meshStandardMaterial color={color}/></mesh>)}</group><Panel x={boardX} y={2.1} z={back} w={2.1} h={1.12} color="#bc8a87"/></>
+  if (id === 'quality') return <><Panel x={boardX} y={2.15} z={back} w={2.7} h={1.24} color="#3f966f"/><group position={[width / 2 - 1.4, 0, back + .9]}>
+    {[-.7, .7].map(x => <mesh key={x} position={[x, .85, 0]}><boxGeometry args={[.07, 1.7, .56]}/><meshStandardMaterial color="#657584"/></mesh>)}
+    {[0, 1, 2].map(i => <mesh key={i} position={[0, .5 + i * .44, 0]}><boxGeometry args={[1.6, .25, .55]}/><meshStandardMaterial color={i === 2 ? '#779a89' : '#535e71'}/></mesh>)}</group></>
+  if (id === 'architecture') return <><Panel x={boardX} y={2.1} z={back} w={3.4} h={1.5} color="#687fc0"/><mesh position={[width / 2 - 1.45, .79, back + .85]}><boxGeometry args={[1.7, 1.6, .08]}/><meshStandardMaterial color="#cfd7d8"/></mesh></>
   if (id === 'operations') return <><Panel x={-1.4} y={2.1} z={back} w={2.2} h={1.28} color="#c9aa53"/><Panel x={1.4} y={2.1} z={back} w={2.2} h={1.28} color="#6a96ad"/></>
   if (id === 'security') return <><Panel x={-1.5} y={2.15} z={back} w={2.3} h={1.25} color="#b7657f"/><Panel x={1.5} y={2.15} z={back} w={2.3} h={1.25} color="#5e8ba7"/><mesh position={[width / 2 - 1.1, .8, back + 1]}><boxGeometry args={[.85, 1.6, .65]}/><meshStandardMaterial color="#1c2a3e"/></mesh></>
   if (id === 'data') return <><Panel x={-1.4} y={2.1} z={back} w={2.25} h={1.32} color="#408da5"/><Panel x={1.4} y={2.1} z={back} w={2.25} h={1.32} color="#6397a7"/><Bookshelf x={width / 2 - 1.1} z={back + 1}/></>
-  return <><Panel x={0} y={2.12} z={back} w={2.6} h={1.1} color="#758da9"/></>
+  return <><Panel x={boardX} y={2.12} z={back} w={2.6} h={1.1} color="#758da9"/></>
 }
 
 function SectorRoom({ sector, preferences }: { sector: Sector; preferences: OfficePreferences }) {
@@ -122,6 +134,7 @@ function FocusNook({ x, z }: { x: number; z: number }) {
       <meshStandardMaterial color="#7088a3"/>
     </RoundedBox>)}
     <mesh position={[0, .13, -.2]}><boxGeometry args={[1.12, .22, .54]}/><meshStandardMaterial color="#53687f"/></mesh>
+    {[-.55, .55].map(side => <mesh key={side} position={[side, 1.35, -.55]}><boxGeometry args={[.055, .28, .09]}/><meshStandardMaterial color="#98afc0"/></mesh>)}
     <mesh position={[0, 1.46, -.55]}><boxGeometry args={[1.62, .075, .13]}/><meshStandardMaterial color="#b8d7e0" emissive="#6e99ad" emissiveIntensity={.14}/></mesh>
   </group>
 }
