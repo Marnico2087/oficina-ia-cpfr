@@ -6,16 +6,19 @@ import { randomUUID } from 'node:crypto'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { discoverProviders, foldersOverlap, launchArgs } from './providers.mjs'
+import { DEFAULT_AGENTS, makeAgent, validStoredAgents, validateAgent } from './agents.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
 // Installed CLI writes history to a user-writable directory. Source development
 // keeps the existing .local/tasks.json location for backwards compatibility.
 const STORE = join(process.env.AGENT_OFFICE_DATA_DIR || join(ROOT, '.local'), 'tasks.json')
+const AGENT_STORE = join(dirname(STORE), 'agents.json')
 const PORT = Number(process.env.PORT || 4300)
 const MAX_TASKS = 150
 const MAX_PROMPT = 10000
-const ROLES = ['atlas', 'nova', 'pixel', 'sentinel']
+let agents = DEFAULT_AGENTS.map(agent => ({ ...agent }))
+let agentsPersistChain = Promise.resolve()
 const active = new Map()
 const clients = new Set()
 let tasks = []
@@ -48,7 +51,36 @@ function snapshot() {
     codexAvailable: providers.find(provider => provider.id === 'codex').available,
     providers: providers.map(({ id, name, available }) => ({ id, name, available })),
     defaultWorkspace: process.env.AGENT_OFFICE_WORKSPACE || ROOT,
+    agents,
     tasks: tasks.map(visible),
+  }
+}
+
+// Serialize edits and acknowledge them only after the new roster is safely on disk.
+function changeAgents(edit) {
+  const operation = agentsPersistChain.then(async () => {
+    const update = edit(agents)
+    if (update.error) return update
+    const contents = JSON.stringify(update.next, null, 2)
+    await mkdir(dirname(AGENT_STORE), { recursive: true })
+    const temporary = `${AGENT_STORE}.${randomUUID()}.tmp`
+    await writeFile(temporary, contents)
+    await rename(temporary, AGENT_STORE)
+    agents = update.next
+    notifyState()
+    return update
+  })
+  agentsPersistChain = operation.then(() => {}, error => console.error('Could not save agents:', error.message))
+  return operation
+}
+
+async function loadAgents() {
+  try {
+    const stored = JSON.parse(await readFile(AGENT_STORE, 'utf8'))
+    if (validStoredAgents(stored)) agents = stored.map(agent => makeAgent(agent, agent.id))
+    else console.error('Invalid agents.json; retained default agents.')
+  } catch (error) {
+    if (error.code !== 'ENOENT') console.error('Could not load agents:', error.message)
   }
 }
 
@@ -164,6 +196,47 @@ async function loadHistory() {
 }
 
 app.get('/api/state', (_req, res) => res.json(snapshot()))
+app.post('/api/agents', async (req, res) => {
+  const error = validateAgent(req.body)
+  if (error) return res.status(400).json({ error })
+  try {
+    const { agent } = await changeAgents(current => {
+      const agent = makeAgent(req.body)
+      return { next: [...current, agent], agent }
+    })
+    res.status(201).json({ agent })
+  } catch { res.status(500).json({ error: 'Could not save agent profile.' }) }
+})
+app.put('/api/agents/:id', async (req, res) => {
+  const error = validateAgent(req.body)
+  if (error) return res.status(400).json({ error })
+  try {
+    const result = await changeAgents(current => {
+      if (!current.some(agent => agent.id === req.params.id)) return { status: 404, error: 'Agent not found.' }
+      const agent = makeAgent(req.body, req.params.id)
+      return { next: current.map(item => item.id === agent.id ? agent : item), agent }
+    })
+    if (result.error) return res.status(result.status).json({ error: result.error })
+    res.json({ agent: result.agent })
+  } catch { res.status(500).json({ error: 'Could not save agent profile.' }) }
+})
+app.delete('/api/agents/:id', async (req, res) => {
+  try {
+    const result = await changeAgents(current => {
+      if (!current.some(agent => agent.id === req.params.id)) return { status: 404, error: 'Agent not found.' }
+      if ([...active.values()].some(item => item.task.agentId === req.params.id)) return { status: 409, error: 'Agent is working. Stop or finish their task first.' }
+      return { next: current.filter(agent => agent.id !== req.params.id) }
+    })
+    if (result.error) return res.status(result.status).json({ error: result.error })
+    res.json({ ok: true })
+  } catch { res.status(500).json({ error: 'Could not save agent profile.' }) }
+})
+
+// Roster changes only notify browsers. Task history is written separately.
+function notifyState() {
+  const data = `event: state\ndata: ${JSON.stringify(snapshot())}\n\n`
+  for (const client of clients) client.write(data)
+}
 app.get('/api/events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
@@ -179,7 +252,7 @@ app.post('/api/tasks', (req, res) => {
   const provider = providers.find(item => item.id === requestedProvider)
   if (!provider) return res.status(400).json({ error: 'Motor de IA desconhecido.' })
   if (!provider.available) return res.status(503).json({ error: `${provider.name} não encontrado. Instale e autentique o CLI, depois reinicie o escritório.` })
-  if (!ROLES.includes(agentId)) return res.status(400).json({ error: 'Agente desconhecido.' })
+  if (!agents.some(agent => agent.id === agentId)) return res.status(400).json({ error: 'Agente desconhecido.' })
   if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > MAX_PROMPT) return res.status(400).json({ error: 'Tarefa vazia ou extensa demais.' })
   if (typeof workspace !== 'string' || workspace.length > 1000 || !isAbsolute(workspace)) return res.status(400).json({ error: 'Informe uma pasta de projeto com caminho absoluto.' })
   try {
@@ -192,7 +265,7 @@ app.post('/api/tasks', (req, res) => {
   if ([...active.values()].some(a => foldersOverlap(canonical, a.canonical))) return res.status(409).json({ error: 'Já existe uma tarefa trabalhando nessa pasta (ou numa pasta dentro dela). Aguarde ou escolha outro projeto para evitar conflitos.' })
 
   const task = {
-    id: randomUUID(), agentId, provider: provider.id, prompt: prompt.trim(), workspace, status: 'running', phase: 'thinking',
+    id: randomUUID(), agentId, agentName: agents.find(agent => agent.id === agentId).name, provider: provider.id, prompt: prompt.trim(), workspace, status: 'running', phase: 'thinking',
     createdAt: stamp(), updatedAt: stamp(), finishedAt: null, lastMessage: '', events: [], threadId: null, usage: null,
   }
   tasks.unshift(task)
@@ -250,7 +323,7 @@ app.post('/api/tasks/:id/cancel', (req, res) => {
   res.json({ ok: true })
 })
 
-await loadHistory()
+await Promise.all([loadHistory(), loadAgents()])
 if (existsSync(join(ROOT, 'dist', 'index.html'))) {
   app.use(express.static(join(ROOT, 'dist')))
   app.get('/', (_req, res) => res.sendFile(join(ROOT, 'dist', 'index.html')))

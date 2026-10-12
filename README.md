@@ -2,7 +2,7 @@
 
 **Open-source 3D mission control for local AI coding agents.** Inspect an animated office, assign Codex CLI, Claude Code or Gemini CLI tasks, follow execution events, and track task history. Built with React, TypeScript, React Three Fiber, Three.js, and Node/Express.
 
-> **Project status: functional prototype (v0.1).** The four avatars are visual task slots backed by separate CLI executions. They do not yet share memory, delegate or form a coordinated multi-agent workflow. In Demo mode, all activity is simulated and no code is executed. Codex is the most extensively tested provider; Claude Code support is experimental and Gemini CLI support has not been tested on a machine with Gemini installed.
+> **Project status: functional prototype (v0.2).** Agent profiles are configurable visual task slots backed by separate CLI executions. They do not yet share memory, delegate or form a coordinated multi-agent workflow. In Demo mode, all activity is simulated and no code is executed. Codex is the most extensively tested provider; Claude Code support is experimental and Gemini CLI support has not been tested on a machine with Gemini installed.
 
 ![Agent Office 3D demo](docs/office-preview.png)
 
@@ -53,7 +53,17 @@ And in the second terminal:
 npm run dev
 ```
 
-When launched via `agent-office`, real tasks default to your terminal's current directory; when started from the source using `npm run dev:all`, they default to this project's root. Change the folder in Settings if needed. Each task starts a new CLI process with its own prompt. The four visual avatars are task slots; they do not observe existing external chat sessions or automatically coordinate. The server rejects overlapping workspace folders while its own tasks are running.
+When launched via `agent-office`, real tasks default to your terminal's current directory; when started from the source using `npm run dev:all`, they default to this project's root. Change the folder in Settings if needed. Each task starts a new CLI process with its own prompt. Agent profiles represent independent task slots; they do not observe existing external chat sessions or automatically coordinate. The server rejects overlapping workspace folders while its own tasks are running.
+
+### 🏢 Flexible team and expanding office
+
+Open **Agent team → Add agent** to create as many profiles as your setup needs. The original four agents are starting examples, **not a limit**: 0, 1, 10, 20, 50 and larger teams are supported by the roster and office layout. Edit each agent's name, role, mission/specialty, color and department, or remove agents when they are no longer needed. The app suggests a department when your role or mission clearly indicates one; you can override the suggestion. Unrecognized roles use shared workstations rather than being assigned to an unrelated themed area.
+
+The 3D campus groups agents into nine purpose-specific departments: architecture, engineering, design, quality assurance, research, data/analytics, security, operations and shared space. Each room has relevant workstations and props; room depth and the campus footprint expand automatically. Teams with more than eight agents open with an automatically fitted campus overview. Select any agent card to focus its workstation, then use the bottom-right overview button to see the entire campus again. To protect 3D performance, **teams over 50 display the 50 nearest detailed 3D workstations at a time**; all agents still have assigned places and remain selectable. A large roster does not mean that the machine can run that many CLI jobs simultaneously. CPU/RAM, provider limits and the existing one-job-per-overlapping-project guard still apply.
+
+![Automatically expanded office with 20 agents across nine departments](docs/office-expanded.png)
+
+Profiles are saved locally in `agents.json` next to the private task history, survive restarts, and are scoped to the current Agent Office data directory. You can safely remove the last agent and rebuild your team from zero. Finished task history stays intact when its agent is removed. Demo mode only simulates activity for existing sample agents; it never consumes CLI tokens.
 
 **Codex Web GPT / Codex desktop integration:** If you use [Codex Web GPT](https://github.com/miuuyy/codex-chatgpt-web), choose the same repository folder to launch a fresh independent CLI task there. The Agent Office does not connect to its tunnel, Native2 bridge, chat, or existing Codex processes. Avoid modifying the same files concurrently in the two apps; the folder conflict guard cannot detect external applications. Your Codex Web GPT configuration and authentication are never changed by setup.
 
@@ -81,6 +91,7 @@ npm run server
 - Inspect a selected agent's execution phase, live elapsed time, latest update, chronological event details, errors and token usage (when reported by Codex). Select a task from the feed or history to inspect that exact run.
 - Track finished jobs, latest status and task history; request cancellation.
 - Explore the whole interface in Demo mode without spending API tokens or executing commands.
+- Create, edit and delete agent profiles; assign meaningful departments and expand the 3D office with no fixed number of slots.
 
 ## Scripts
 
@@ -99,6 +110,7 @@ npm run server
 | `npm run test:behavior` | Test agent behavior and CLI adapter / folder-safety rules without real AI jobs |
 | `npm run check:server` | Validate server syntax |
 | `npm run smoke:browser` | Smoke-test UI, visual 3D rendering and WebGL (both services running, Chrome needed) |
+| `npm run smoke:roster` | Start an isolated local office, test real agent-management UI, and check 0, 1, 20, 50 workstations without launching AI jobs (Chrome needed) |
 | `npm run smoke:live` | **Runs real Codex jobs and consumes tokens**; tests parallel isolated file writes and API protections |
 | `npm run smoke:live-ui` | **Runs a real Codex job and consumes tokens**; verifies launch, live 3D reactions, timeline and result through Chrome |
 
@@ -110,13 +122,13 @@ CLI detection checks whether a command is installed, **not whether you are signe
 
 `smoke:live` creates disposable test directories inside `.local/`; it runs two real Codex sessions, so it requires an authenticated CLI and can incur usage costs. Do not run it as part of an untrusted CI workflow.
 
-Task prompts, statuses, phase updates, recent events (up to 35 per task) and short output excerpts are saved locally in `.local/tasks.json` in source development, or in a folder specific to each workspace under your user state directory (`%LOCALAPPDATA%\\AgentOffice` on Windows, `~/.local/state/agent-office` on Linux, etc.) when started with the globally installed CLI. This prevents separate project windows from overwriting each other's history. These files are not committed. Avoid putting credentials in task instructions. The API has no user authentication and must **never** be exposed publicly on a network.
+Task prompts, statuses, phase updates, recent events (up to 35 per task) and short output excerpts are saved locally in `.local/tasks.json`, and editable agent profiles in `.local/agents.json`, during source development. Globally installed CLI data lives in a folder specific to each workspace under your user state directory (`%LOCALAPPDATA%\\AgentOffice` on Windows, `~/.local/state/agent-office` on Linux, etc.). This prevents separate project windows from overwriting each other's history and roster. These files are not committed. Avoid putting credentials in task instructions. The API has no user authentication and must **never** be exposed publicly on a network.
 
 ## Roadmap
 
 - True multi-agent planning, handoffs, coordination, shared context, and delegation.
 - More provider integrations and full real-world cross-platform testing for Gemini CLI and Claude Code.
-- Further character movement around the office and workspace customization.
+- Further character movement, custom room furniture and richer per-agent personalization.
 - Marketplace publication for the VS Code extension and standalone desktop packages. A manually installable VSIX is available through GitHub Releases.
 
 ## Contributing

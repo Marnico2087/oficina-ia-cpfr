@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Check, ShieldCheck, X } from 'lucide-react';
-import { AGENTS, type AgentId, type ProviderId, type ProviderInfo } from '../types';
+import type { AgentId, ProviderId, ProviderInfo } from '../types';
+import { useAgents } from '../agents';
 import { useLanguage } from '../locales/i18n';
 import { Avatar } from './Avatar';
 
@@ -24,6 +25,7 @@ export function NewTask({ agent, setAgent, workspace, setWorkspace, close, start
   providers: ProviderInfo[];
 }) {
   const { t: tr } = useLanguage();
+  const agents = useAgents();
   const [prompt, setPrompt] = useState('');
   const options = providers.length ? providers : defaultProviders;
   const available = demo || options.some(item => item.id === provider && item.available);
@@ -38,7 +40,7 @@ export function NewTask({ agent, setAgent, workspace, setWorkspace, close, start
       <textarea id="prompt" maxLength={10000} autoFocus rows={5} placeholder={tr('Example: Analyze this project, identify performance bottlenecks and improve them...')} value={prompt} onChange={event => setPrompt(event.target.value)}/>
       <label>{tr('ASSIGN TO')}</label>
       <div className="modal-agent-list">
-        {AGENTS.map(item => <button key={item.id} className={agent === item.id ? 'selected' : ''} onClick={() => setAgent(item.id)}>
+        {agents.map(item => <button key={item.id} className={agent === item.id ? 'selected' : ''} onClick={() => setAgent(item.id)}>
           <Avatar id={item.id} size="sm"/>{item.name}{agent === item.id && <Check size={14}/>}
         </button>)}
       </div>

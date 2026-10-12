@@ -1,4 +1,4 @@
-import { BrainCircuit, Code2, Layers3, ShieldCheck } from 'lucide-react';
+import { BrainCircuit, Code2, Layers3, ShieldCheck, Network, Library, Users, Database, LockKeyhole } from 'lucide-react';
 import type { OfficeTask, TaskPhase } from '../types';
 
 export const statusName: Record<string, string> = { running: 'In progress', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled', interrupted: 'Interrupted', idle: 'Available' };
@@ -10,4 +10,4 @@ export function displayPrompt(task: OfficeTask, translate: (text: string) => str
 export function displayEvent(task: OfficeTask, message: string, translate: (text: string) => string): string {
     return task.id.startsWith('demo-') ? translate(message) : message;
 }
-export const icons = { atlas: BrainCircuit, nova: Code2, pixel: Layers3, sentinel: ShieldCheck };
+export const icons = { architecture: BrainCircuit, engineering: Code2, design: Layers3, quality: ShieldCheck, research: Library, operations: Network, security: LockKeyhole, data: Database, general: Users };

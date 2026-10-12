@@ -174,7 +174,43 @@ Runs locally with selected CLI
 One task per project folder
 Choose the CLI used for each task.
 Start API and install an AI CLI
-The API runs on your computer. Tasks use your installed AI CLI. Recent activity stays in .local/tasks.json.`.split('\n')
+The API runs on your computer. Tasks use your installed AI CLI. Recent activity stays in .local/tasks.json.
+Add agent
+Edit agent
+Remove agent
+Save agent
+Agent details
+Name
+Role
+Specialty / mission
+Department
+Color
+No agents yet
+Add your first agent to build the office.
+Organize specialists into departments. The office expands automatically with your team.
+Connect to your local API to manage agents.
+Their saved task history will remain.
+Agent profile and office placement are saved locally.
+Engineering lab
+Creative studio
+Quality & testing
+Research library
+Operations center
+Security operations
+Data & analytics
+Shared workstations
+Suggested from the role and mission. You can change it.
+Department selected manually.
+Developer, Researcher, Security engineer…
+What does this agent do?
+Agent created
+Agent updated
+Agent removed
+Unable to save agent
+Unable to remove agent
+Add an agent to create tasks
+Former agent
+Show entire office`.split('\n')
 
 export const languages = [
   { code: 'pt-BR', name: 'Português (Brasil)' },

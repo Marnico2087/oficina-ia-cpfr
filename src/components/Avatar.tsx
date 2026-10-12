@@ -1,12 +1,13 @@
 import type { CSSProperties } from 'react';
-import { AGENTS, type AgentId } from '../types';
+import type { AgentId } from '../types';
+import { useAgent } from '../agents';
 
 export function Avatar({ id, size = 'md' }: {
     id: AgentId;
     size?: 'sm' | 'md' | 'lg';
 }) {
-    const agent = AGENTS.find(a => a.id === id)!;
-    return <span className={`avatar avatar-${size}`} style={{ '--agent-color': agent.color } as CSSProperties}><span className="avatar-head"/><span className="avatar-shoulders"/></span>;
+    const agent = useAgent(id);
+    return <span className={`avatar avatar-${size}`} style={{ '--agent-color': agent?.color || '#9ba9c2' } as CSSProperties}><span className="avatar-head"/><span className="avatar-shoulders"/></span>;
 }
 
 export function Dot({ status }: {

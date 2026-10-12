@@ -2,7 +2,7 @@
   "name": "agent-office-vscode",
   "displayName": "Agent Office 3D",
   "description": "Open your local AI agents' 3D office inside VS Code for the current workspace.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "Munizada",
   "license": "MIT",
   "engines": { "vscode": "^1.92.0" },

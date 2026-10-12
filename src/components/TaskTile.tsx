@@ -1,5 +1,6 @@
 import { GitBranch } from 'lucide-react';
-import { AGENTS, type OfficeTask } from '../types';
+import type { OfficeTask } from '../types';
+import { useAgent } from '../agents';
 import { useLanguage } from '../locales/i18n';
 import { Avatar, Dot } from './Avatar';
 import { statusName, displayPrompt } from './taskDisplay';
@@ -10,6 +11,6 @@ export function TaskTile({ task, selected, onClick }: {
     onClick: () => void;
 }) {
     const { t: tr, formatAgo } = useLanguage();
-    const agent = AGENTS.find(a => a.id === task.agentId)!;
-    return <button className={`task-tile ${selected ? 'selected' : ''}`} onClick={onClick}><div className="task-tile-top"><span><Avatar id={task.agentId} size="sm"/>{agent.name} · {task.provider === 'claude' ? 'Claude' : task.provider === 'gemini' ? 'Gemini' : 'Codex'}</span><span className={`pill-status ${task.status}`}><Dot status={task.status}/>{tr(statusName[task.status])}</span></div><strong>{displayPrompt(task, tr)}</strong><div className="task-tile-bottom"><span><GitBranch size={12}/>{task.workspace === 'Demo workspace' ? tr('Demo workspace') : task.workspace.split(/[\\/]/).filter(Boolean).at(-1)}</span><time>{formatAgo(task.updatedAt)}</time></div></button>;
+    const agent = useAgent(task.agentId);
+    return <button className={`task-tile ${selected ? 'selected' : ''}`} onClick={onClick}><div className="task-tile-top"><span><Avatar id={task.agentId} size="sm"/>{task.agentName || agent?.name || task.agentId} · {task.provider === 'claude' ? 'Claude' : task.provider === 'gemini' ? 'Gemini' : 'Codex'}</span><span className={`pill-status ${task.status}`}><Dot status={task.status}/>{tr(statusName[task.status])}</span></div><strong>{displayPrompt(task, tr)}</strong><div className="task-tile-bottom"><span><GitBranch size={12}/>{task.workspace === 'Demo workspace' ? tr('Demo workspace') : task.workspace.split(/[\\/]/).filter(Boolean).at(-1)}</span><time>{formatAgo(task.updatedAt)}</time></div></button>;
 }

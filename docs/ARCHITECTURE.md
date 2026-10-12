@@ -23,7 +23,11 @@ Selected CLI → filesystem inside the selected project directory
 
 ## Modes and data
 
-Demo mode creates simulated tasks in browser memory. Live mode asks the local API to launch independently managed CLI jobs. The four avatars are task slots, not a coordinated agent swarm. No agent-to-agent communication or shared memory is currently implemented.
+Demo mode creates simulated tasks in browser memory. Live mode asks the local API to launch independently managed CLI jobs. Agent profiles are user-editable task slots, not a coordinated agent swarm. No agent-to-agent communication or shared memory is currently implemented.
+
+`server/agents.mjs` validates and persists each local roster atomically to `agents.json`, separate from task history. The REST API exposes `GET /api/state`, `POST /api/agents`, `PUT /api/agents/:id`, and `DELETE /api/agents/:id`. Updates stream over the existing SSE channel; concurrent edits are serialized before acknowledgement. Profiles start with four examples on first use but can be reduced to zero or expanded as needed. Agents cannot be deleted while they have a running task; deleted agents retain their completed history.
+
+`src/scene/officeLayout.ts` deterministically groups every agent into one of nine functional sectors, grows room depth to hold any number of workstations, and lays rooms out across additional rows. `OfficeCampus.tsx` adds room-specific furniture and decoration for the work being represented. The client suggests a sector from the agent's role and mission while allowing a manual override and a general fallback. With more than eight agents, the camera initially fits the campus; selecting an agent zooms into their station, and the overview button restores the full view. For 3D rendering efficiency, teams over 50 prioritize the 50 nearest avatar/workstation details around the selected agent; the underlying layout, roster cards and navigation still include all agents.
 
 The API is local-only, unauthenticated, and restricted to loopback host/origins. It **must not be published or proxied to the internet or a LAN**. Real CLI jobs can change files in the selected workspace. The API rejects concurrent office tasks targeting the same or nested workspace; it cannot detect writes by other apps or instances.
 

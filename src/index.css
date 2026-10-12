@@ -27,6 +27,11 @@ footer{padding:20px 37px;display:flex;justify-content:space-between;gap:10px;bor
 
 /* Phase badges are attached to 3D workstations and follow the selected locale. */
 .office-3d-shell{position:relative;width:100%;height:100%}
+.scene-overview-btn{position:absolute;right:15px;bottom:14px;z-index:2;display:grid;place-items:center;width:37px;height:37px;border:1px solid #ffffff36;border-radius:9px;background:#16263edb;color:#e6f2ff;cursor:pointer;backdrop-filter:blur(8px);transition:background .15s ease}
+.scene-overview-btn:hover:not(:disabled){background:#304b70}
+.scene-overview-btn:disabled{opacity:.45;cursor:default}
+.scene-phase-label.overview-idle{display:none}
+@media(max-width:740px){.scene-hint{right:59px;white-space:normal;line-height:1.35}.scene-overview-btn{right:10px;bottom:10px}}
 .scene-phase-overlay{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 .scene-phase-label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;border:1px solid #536a8d;background:#16243bea;color:#e3efff;box-shadow:0 4px 16px #020d2280;padding:5px 9px;border-radius:8px;font:700 10px 'DM Sans',system-ui,sans-serif;letter-spacing:.15px;user-select:none}
 .scene-phase-overlay .scene-phase-label{position:absolute;transform:translate(-50%,-50%);left:-100px;top:-100px}
@@ -70,6 +75,30 @@ footer{padding:20px 37px;display:flex;justify-content:space-between;gap:10px;bor
 .execution-error strong{font-size:10px}
 .execution-error p{font-size:10px;line-height:1.5;margin:5px 0 0;overflow-wrap:anywhere}
 .execution-usage{display:flex;flex-wrap:wrap;gap:8px 12px;padding:0 13px 12px;font-size:10px;color:#6a7790}
+/* Dynamic roster and department-driven office. */
+.team-intro{display:flex;align-items:center;justify-content:space-between;gap:20px}.team-intro>.primary-btn{flex:none}
+.department-summary{display:flex;flex-wrap:wrap;gap:9px;margin:-8px 0 23px}.department-summary span,.department-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;border:1px solid #e2e7f0;background:#f3f6fc;color:#617089;font-size:11px;font-weight:700}
+.department-summary i{width:8px;height:8px;border-radius:50%}
+.department-pill{margin:0 0 14px;background:#fbfbfe}
+.roster-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.agent-card-foot .roster-actions button{min-height:32px;padding:8px;border-radius:8px}
+.agent-card-foot .roster-actions button:disabled{opacity:.38;cursor:not-allowed}
+.agent-card-foot .roster-actions button:last-child{padding:9px 11px}
+.roster-warning{background:#fff5e7;border:1px solid #f0d8b1;color:#94733e;padding:13px 16px;border-radius:9px;margin-bottom:16px;font-size:12px}
+.agent-fields{display:grid;grid-template-columns:1fr;gap:7px}
+.agent-fields label{font-size:10px;color:#576681;font-weight:800;margin-top:11px}
+.agent-fields input,.agent-fields textarea{width:100%;min-width:0;padding:10px 13px;border:1px solid #e1e5ee;border-radius:9px;font-size:13px;background:#fafbfe;outline-color:#9388f1;color:#24314b}
+.agent-fields input[type=color]{height:46px;cursor:pointer;padding:5px}
+.agent-fields textarea{resize:vertical}
+.department-hint{font-size:10px;color:#728096;line-height:1.45}
+.scene-phase-overlay .scene-sector-label{position:absolute;transform:translate(-50%,-50%);left:-100px;top:-100px}
+.scene-sector-label{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:7px 10px;border-radius:7px;background:#101d32e8;border:1px solid #7d90ac85;color:#e8f1ff;font:800 10px 'DM Sans',system-ui,sans-serif;letter-spacing:.3px}
+.scene-sector-label i{width:8px;height:8px;border-radius:50%}
+.scene-phase-label.phase-idle{opacity:.58}
+.modal-agent-list{grid-template-columns:repeat(auto-fit,minmax(105px,1fr));max-height:190px;overflow-y:auto}
+.crew-grid{grid-template-columns:repeat(auto-fit,minmax(132px,1fr));max-height:265px;overflow-y:auto;padding:2px 4px 5px 2px}
+.side-team{max-height:300px;overflow-y:auto}
+@media(max-width:740px){.team-intro{align-items:flex-start}.team-intro .primary-btn{font-size:11px;padding:11px}.agents-grid{grid-template-columns:1fr}.crew-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.scene-sector-label{font-size:9px}.scene-phase-label.phase-idle{display:none}}
 @media(max-width:1050px) and (min-width:741px){
 .ops .agent-inspector{grid-column:1;grid-row:2/4}
 .ops .feed-head{grid-column:2;grid-row:2}
