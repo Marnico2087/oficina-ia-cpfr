@@ -6,6 +6,12 @@
 
 ![Agent Office 3D demo](docs/office-preview.png)
 
+## Try the interactive demo online
+
+**[Open the public browser demo](https://munizada.github.io/agent-office/)** — explore the 3D office, customize rooms, add/edit/delete agent profiles, and simulate tasks in your own browser. **No installation or AI account is needed.** The preview never connects to a local CLI or sends commands to the maintainer's computer. Agent profile and appearance changes stay in each visitor's own browser storage; simulated task activity resets on reload. The GitHub Actions workflow publishes the demo whenever `main` changes.
+
+**Maintainer setup:** GitHub Pages must use **GitHub Actions** as its deployment source under repository **Settings → Pages**. If Pages is not enabled, this one-time setting is required before the first deployment succeeds. The URL above works only after GitHub reports a successful `Public interactive demo` deployment; see the [deployment workflow](.github/workflows/demo-pages.yml).
+
 ## Requirements
 
 - Node.js 20.19+ / 22.12+ (tested on Node 24) and npm.

@@ -50,8 +50,8 @@ export function NewTask({ agent, setAgent, workspace, setWorkspace, close, start
           {item.name}{!demo && !item.available ? ` (${tr('NOT FOUND')})` : ''}
         </option>)}
       </select>
-      <label htmlFor="mission-dir">{tr('PROJECT DIRECTORY')}</label>
-      <input id="mission-dir" value={workspace} onChange={event => setWorkspace(event.target.value)} placeholder={tr('Absolute project path')} disabled={demo}/>
+      {!import.meta.env.MODE.includes('public-demo') && <><label htmlFor="mission-dir">{tr('PROJECT DIRECTORY')}</label>
+      <input id="mission-dir" value={workspace} onChange={event => setWorkspace(event.target.value)} placeholder={tr('Absolute project path')} disabled={demo}/></>}
       <div className="modal-bottom">
         <span><ShieldCheck size={15}/>{demo ? tr('Preview only · no real execution') : tr('Runs locally with selected CLI')}</span>
         <button className="primary-btn" disabled={!prompt.trim() || busy || !available} onClick={() => start(prompt)}>
