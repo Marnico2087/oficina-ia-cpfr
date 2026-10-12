@@ -13,10 +13,11 @@
     "lint": "oxlint",
     "preview": "vite preview --host 127.0.0.1",
     "check:server": "node --check server/index.mjs",
+    "test:behavior": "node --test scripts/test-agent-behavior.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "smoke:live": "node scripts/smoke-live.mjs",
     "check:public": "node scripts/check-public.mjs",
-    "verify:public": "npm run check:public && npm run lint && npm run build && npm run check:server"
+    "verify:public": "npm run check:public && npm run lint && npm run test:behavior && npm run build && npm run check:server"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

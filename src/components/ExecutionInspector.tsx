@@ -1,17 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Activity, AlertCircle, Clock3, Cpu, History, Timer } from 'lucide-react';
 import { useLanguage } from '../locales/i18n';
-import { displayEvent, displayPrompt, statusName } from './taskDisplay';
+import { displayEvent, displayPrompt, statusName, phaseName } from './taskDisplay';
 import { Dot } from './Avatar';
-import type { OfficeTask, TaskPhase } from '../types';
-
-const phaseName: Record<TaskPhase, string> = {
-  thinking: 'Thinking',
-  coding: 'Coding',
-  researching: 'Researching',
-  finishing: 'Finishing',
-  idle: 'Idle',
-};
+import type { OfficeTask } from '../types';
 
 function elapsedSeconds(task: OfficeTask, now: number) {
   const start = Date.parse(task.createdAt);

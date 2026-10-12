@@ -1,12 +1,42 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { ContactShadows, OrbitControls, OrthographicCamera, RoundedBox, Stars } from '@react-three/drei'
-import { useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Group, Mesh } from 'three'
+import { MathUtils, Vector3 } from 'three'
 import { AGENTS, type AgentId, type OfficeTask, type OfficeAgent } from '../types'
+import { useLanguage } from '../locales/i18n'
+import { phaseName, statusName } from '../components/taskDisplay'
+import { resolveAgentPose, selectAgentTask, TERMINAL_POSE_MS, type AgentPose } from './agentBehavior'
 
 const desks: Record<AgentId, [number, number, number]> = {
   atlas: [-3.65, 0, -1.65], nova: [0.95, 0, -1.65],
   pixel: [-3.65, 0, 2.05], sentinel: [0.95, 0, 2.05],
+}
+
+// Project world positions to the existing React DOM layer without creating
+// separate React roots inside Three.js (which can race during unmount).
+function BadgeProjector({ overlayId }: { overlayId: string }) {
+  const point = useRef(new Vector3())
+  const labels = useRef<Partial<Record<AgentId, HTMLSpanElement | null>>>({})
+  useEffect(() => {
+    const overlay = document.getElementById(overlayId)
+    for (const agent of AGENTS) {
+      labels.current[agent.id] = overlay?.querySelector<HTMLSpanElement>(`[data-agent="${agent.id}"]`) || null
+    }
+    return () => { labels.current = {} }
+  }, [overlayId])
+  useFrame(({ camera, size }) => {
+    for (const agent of AGENTS) {
+      const label = labels.current[agent.id]
+      if (!label) continue
+      const desk = desks[agent.id]
+      point.current.set(desk[0], desk[1] + 2.48, desk[2] + 1.06).project(camera)
+      label.style.left = `${(point.current.x + 1) * size.width / 2}px`
+      label.style.top = `${(1 - point.current.y) * size.height / 2}px`
+      label.style.visibility = Math.abs(point.current.x) > 1 || Math.abs(point.current.y) > 1 || point.current.z > 1 ? 'hidden' : 'visible'
+    }
+  })
+  return null
 }
 
 function Plant({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
@@ -116,18 +146,39 @@ function Desk({ color, active }: { color: string; active: boolean }) {
   </group>
 }
 
-function Avatar({ agent, working, phase, selected, onSelect }: {
-  agent: OfficeAgent; working: boolean; phase: string; selected: boolean; onSelect: () => void
+function Avatar({ agent, pose, selected, onSelect }: {
+  agent: OfficeAgent; pose: AgentPose; selected: boolean; onSelect: () => void
 }) {
   const group = useRef<Group>(null)
+  const head = useRef<Group>(null)
   const left = useRef<Group>(null)
   const right = useRef<Group>(null)
   const halo = useRef<Mesh>(null)
-  useFrame(({ clock }) => {
+  const working = pose !== 'idle' && pose !== 'celebrating' && pose !== 'error'
+  useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime
-    if (group.current) group.current.position.y = Math.sin(t * 1.6 + agent.name.length) * .025
-    if (left.current) left.current.rotation.x = working ? Math.sin(t * 8) * .15 : 0
-    if (right.current) right.current.rotation.x = working ? Math.cos(t * 7) * .16 : 0
+    const speed = Math.min(delta, .05)
+    const coding = pose === 'coding'
+    const research = pose === 'researching'
+    const success = pose === 'celebrating'
+    const failed = pose === 'error'
+    if (group.current) {
+      const bounce = success ? Math.abs(Math.sin(t * 7)) * .12 : working ? Math.sin(t * 1.8 + agent.name.length) * .025 : 0
+      group.current.position.y = MathUtils.damp(group.current.position.y, bounce, 8, speed)
+      group.current.rotation.x = MathUtils.damp(group.current.rotation.x, failed ? .22 : research ? -.09 : 0, 6, speed)
+    }
+    if (head.current) {
+      head.current.rotation.z = MathUtils.damp(head.current.rotation.z, pose === 'thinking' ? -.19 + Math.sin(t * 1.1) * .04 : failed ? .18 : 0, 6, speed)
+      head.current.rotation.x = MathUtils.damp(head.current.rotation.x, research ? -.2 + Math.sin(t * 2) * .07 : pose === 'finishing' ? Math.sin(t * 3) * .09 : 0, 6, speed)
+    }
+    if (left.current) {
+      left.current.rotation.x = MathUtils.damp(left.current.rotation.x, coding ? Math.sin(t * 11) * .23 : research ? -.55 : pose === 'thinking' ? -.32 : success ? -2.7 : failed ? .25 : 0, 10, speed)
+      left.current.rotation.z = MathUtils.damp(left.current.rotation.z, success ? -.45 : failed ? -.15 : 0, 8, speed)
+    }
+    if (right.current) {
+      right.current.rotation.x = MathUtils.damp(right.current.rotation.x, coding ? Math.cos(t * 12) * .25 : research ? -.32 : success ? -2.7 : failed ? .25 : 0, 10, speed)
+      right.current.rotation.z = MathUtils.damp(right.current.rotation.z, success ? .45 : failed ? .15 : 0, 8, speed)
+    }
     if (halo.current) halo.current.rotation.z = t * .35
   })
   const color = agent.color
@@ -154,24 +205,65 @@ function Avatar({ agent, working, phase, selected, onSelect }: {
           <capsuleGeometry args={[.105, .31, 5, 9]} /><meshStandardMaterial color={color} /></mesh>
         <mesh position={[side * .16, -.38, .41]}><sphereGeometry args={[.105, 9, 7]} /><meshStandardMaterial color="#eac7a5" /></mesh>
       </group>)}
-      <mesh position={[0, 1.39, .0]} castShadow><sphereGeometry args={[.285, 16, 12]} /><meshStandardMaterial color={agent.id === 'sentinel' ? '#b87e5d' : '#e8bfa0'} roughness={.75} /></mesh>
-      <mesh position={[0, 1.54, -.035]} castShadow><sphereGeometry args={[.294, 16, 9, 0, Math.PI * 2, 0, Math.PI * .52]} /><meshStandardMaterial color={agent.id === 'nova' ? '#35475a' : agent.id === 'pixel' ? '#8b4b42' : '#25263b'} /></mesh>
-      <mesh position={[.115, 1.41, .241]}><sphereGeometry args={[.021, 8, 6]} /><meshBasicMaterial color="#28344b" /></mesh>
-      <mesh position={[-.115, 1.41, .241]}><sphereGeometry args={[.021, 8, 6]} /><meshBasicMaterial color="#28344b" /></mesh>
+      <group ref={head} position={[0, 1.39, 0]}>
+        <mesh castShadow><sphereGeometry args={[.285, 16, 12]} /><meshStandardMaterial color={agent.id === 'sentinel' ? '#b87e5d' : '#e8bfa0'} roughness={.75} /></mesh>
+        <mesh position={[0, .15, -.035]} castShadow><sphereGeometry args={[.294, 16, 9, 0, Math.PI * 2, 0, Math.PI * .52]} /><meshStandardMaterial color={agent.id === 'nova' ? '#35475a' : agent.id === 'pixel' ? '#8b4b42' : '#25263b'} /></mesh>
+        <mesh position={[.115, .02, .241]}><sphereGeometry args={[.021, 8, 6]} /><meshBasicMaterial color="#28344b" /></mesh>
+        <mesh position={[-.115, .02, .241]}><sphereGeometry args={[.021, 8, 6]} /><meshBasicMaterial color="#28344b" /></mesh>
+      </group>
     </group>
-    {working && <mesh position={[0, 1.97, 0]}><sphereGeometry args={[.095, 10, 10]}/><meshBasicMaterial color={phase === 'coding' ? '#65e1b0' : '#e9c27d'} toneMapped={false}/></mesh>}
   </group>
 }
 
-function Workstation({ agent, selected, task, onSelect }: { agent: OfficeAgent; selected: boolean; task?: OfficeTask; onSelect: () => void }) {
-  const working = task?.status === 'running'
+function PhaseEffects({ pose, color }: { pose: AgentPose; color: string }) {
+  const orbit = useRef<Group>(null)
+  useFrame(({ clock }) => {
+    if (!orbit.current) return
+    orbit.current.rotation.y = clock.elapsedTime * (pose === 'celebrating' ? 2.8 : .8)
+    orbit.current.position.y = Math.sin(clock.elapsedTime * 2.5) * .045
+  })
+  return <group position={[0, 0, 1.06]}>
+    {pose === 'thinking' && <group ref={orbit} position={[0, 1.93, 0]}>
+      {[0, 1, 2].map(i => <mesh key={i} position={[Math.cos(i * Math.PI * 2 / 3) * .25, i * .1, Math.sin(i * Math.PI * 2 / 3) * .25]}>
+        <sphereGeometry args={[.055 + i * .014, 10, 8]} /><meshBasicMaterial color="#f9d58a" toneMapped={false} />
+      </mesh>)}
+    </group>}
+    {pose === 'coding' && <group position={[0, 2.04, 0]}>
+      <mesh><boxGeometry args={[.53, .23, .04]}/><meshBasicMaterial color="#172b42" /></mesh>
+      {[-.08, 0, .08].map((y, i) => <mesh key={i} position={[-.08 + i * .025, y, .026]}>
+        <planeGeometry args={[.24 - i * .05, .024]}/><meshBasicMaterial color={i === 1 ? '#8df3c2' : '#5dc6e9'} />
+      </mesh>)}
+    </group>}
+    {pose === 'researching' && <group position={[.46, 1.74, .1]} rotation={[0, -.3, -.1]}>
+      <mesh><boxGeometry args={[.5, .57, .035]} /><meshBasicMaterial color="#263c60" /></mesh>
+      {[0, 1, 2, 3].map(i => <mesh key={i} position={[-.025, .17 - i * .11, .022]}>
+        <planeGeometry args={[.32 - (i % 2) * .09, .025]} /><meshBasicMaterial color={i === 0 ? '#d7c6ff' : '#729cce'} />
+      </mesh>)}
+    </group>}
+    {(pose === 'finishing' || pose === 'celebrating') && <group ref={orbit} position={[0, 1.9, 0]}>
+      <mesh rotation={[Math.PI / 2.5, 0, 0]}><torusGeometry args={[.36, .022, 6, 32]} /><meshBasicMaterial color="#7df2bc" toneMapped={false} /></mesh>
+      {(pose === 'celebrating' ? [0, 1, 2, 3, 4] : [0, 2]).map(i => <mesh key={i} position={[Math.cos(i * Math.PI * 2 / 5) * .45, Math.sin(i * Math.PI * 2 / 5) * .28, 0]}>
+        <octahedronGeometry args={[.09, 0]}/><meshBasicMaterial color={i % 2 ? '#fbe28b' : color} toneMapped={false} />
+      </mesh>)}
+    </group>}
+    {pose === 'error' && <group position={[0, 1.96, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[.28, .035, 8, 32]}/><meshBasicMaterial color="#ff748d" toneMapped={false}/></mesh>
+      <mesh position={[0, 0, .03]}><boxGeometry args={[.035, .2, .03]}/><meshBasicMaterial color="#ffafbb" /></mesh>
+      <mesh position={[0, -.145, .03]}><sphereGeometry args={[.027, 8, 8]}/><meshBasicMaterial color="#ffafbb" /></mesh>
+    </group>}
+  </group>
+}
+
+function Workstation({ agent, selected, pose, onSelect }: { agent: OfficeAgent; selected: boolean; pose: AgentPose; onSelect: () => void }) {
+  const working = pose === 'thinking' || pose === 'coding' || pose === 'researching' || pose === 'finishing'
   return <group position={desks[agent.id]}>
     <Desk color={agent.color} active={working} />
-    <Avatar agent={agent} working={working} phase={task?.phase || 'idle'} selected={selected} onSelect={onSelect} />
+    <Avatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} />
+    <PhaseEffects pose={pose} color={agent.color} />
   </group>
 }
 
-function Studio({ selected, tasks, onSelect }: { selected: AgentId; tasks: OfficeTask[]; onSelect: (value: AgentId) => void }) {
+function Studio({ selected, tasks, onSelect, now, overlayId }: { selected: AgentId; tasks: OfficeTask[]; onSelect: (value: AgentId) => void; now: number; overlayId: string }) {
   return <>
     <color attach="background" args={['#111b2e']} />
     <fog attach="fog" args={['#111b2e', 19, 36]} />
@@ -181,14 +273,43 @@ function Studio({ selected, tasks, onSelect }: { selected: AgentId; tasks: Offic
     <pointLight position={[-5, 3, 2]} intensity={18} color="#8b9efc" distance={9} decay={2} />
     <Stars radius={55} depth={10} count={85} factor={1.6} fade speed={.25} />
     <Room />
-    {AGENTS.map(agent => <Workstation key={agent.id} agent={agent} selected={selected === agent.id} task={tasks.find(t => t.agentId === agent.id && t.status === 'running')} onSelect={() => onSelect(agent.id)} />)}
+    {AGENTS.map(agent => <Workstation key={agent.id} agent={agent} selected={selected === agent.id} pose={resolveAgentPose(selectAgentTask(tasks, agent.id, now), now)} onSelect={() => onSelect(agent.id)} />)}
+    <BadgeProjector overlayId={overlayId} />
     <OrthographicCamera makeDefault position={[16, 16.2, 19]} zoom={47} near={.1} far={100} />
     <OrbitControls target={[-.1, 1, -.2]} minPolarAngle={.38} maxPolarAngle={1.38} minAzimuthAngle={-.5} maxAzimuthAngle={1.9} enablePan={false} enableDamping dampingFactor={.08} minZoom={30} maxZoom={78} />
   </>
 }
 
 export default function OfficeScene({ selected, tasks, onSelect }: { selected: AgentId; tasks: OfficeTask[]; onSelect: (value: AgentId) => void }) {
-  return <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true, alpha: false }} onPointerMissed={() => { }}>
-    <Studio selected={selected} tasks={tasks} onSelect={onSelect} />
-  </Canvas>
+  const { t: tr } = useLanguage()
+  const overlayId = useId()
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setNow(Date.now()), 0)
+    return () => window.clearTimeout(timeout)
+  }, [tasks])
+  useEffect(() => {
+    const current = Date.now()
+    const expiries = tasks.filter(task => ['completed', 'failed', 'interrupted'].includes(task.status))
+      .map(task => Date.parse(task.finishedAt || '') + TERMINAL_POSE_MS)
+      .filter(expiry => Number.isFinite(expiry) && expiry > current)
+    if (!expiries.length) return
+    const timeout = window.setTimeout(() => setNow(Date.now()), Math.min(...expiries) - current + 25)
+    return () => window.clearTimeout(timeout)
+  }, [tasks, now])
+  return <div className="office-3d-shell">
+    <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true, alpha: false }} onPointerMissed={() => { }}>
+      <Studio selected={selected} tasks={tasks} onSelect={onSelect} now={now} overlayId={overlayId} />
+    </Canvas>
+    <div id={overlayId} className="scene-phase-overlay" aria-label={tr('Current phase')}>
+      {AGENTS.map(agent => {
+        const task = selectAgentTask(tasks, agent.id, now)
+        const pose = resolveAgentPose(task, now)
+        const text = pose === 'celebrating' ? statusName.completed : pose === 'error' ? statusName[task?.status || 'failed'] : phaseName[pose]
+        return <span key={agent.id} className={`scene-phase-label phase-${pose}`} data-agent={agent.id} data-pose={pose}>
+          <i aria-hidden="true" />{tr(text)}
+        </span>
+      })}
+    </div>
+  </div>
 }

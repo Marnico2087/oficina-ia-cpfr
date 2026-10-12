@@ -53,7 +53,7 @@ npm run server
 
 ## What works
 
-- Rotate and zoom the 3D office; click an avatar to inspect their task.
+- Rotate and zoom the 3D office; click an avatar to inspect their task. The characters react visually to their reported phases: thinking, coding, researching, finishing, or idle. A completed task triggers a brief celebration; a failed/interrupted task triggers an error reaction. Phase labels follow the interface language.
 - Launch an independent Codex CLI task per avatar, targeting an absolute local project directory.
 - Stream command, file-change, research and progress events to the office through Server-Sent Events (SSE).
 - Inspect a selected agent's execution phase, live elapsed time, latest update, chronological event details, errors and token usage (when reported by Codex). Select a task from the feed or history to inspect that exact run.
@@ -69,6 +69,7 @@ npm run server
 | `npm run server` | Local Codex bridge at 127.0.0.1:4300 |
 | `npm run build` | Type-check and production build |
 | `npm run lint` | Static code checks |
+| `npm run test:behavior` | Test the mapping from task events to 3D reactions (no Codex jobs) |
 | `npm run check:server` | Validate server syntax |
 | `npm run smoke:browser` | Smoke-test UI, visual 3D rendering and WebGL (both services running, Chrome needed) |
 | `npm run smoke:live` | **Runs real Codex jobs and consumes tokens**; tests parallel isolated file writes and API protections |
@@ -85,7 +86,7 @@ Task prompts, statuses, phase updates, recent events (up to 35 per task) and sho
 
 - True multi-agent planning, handoffs, coordination, shared context, and delegation.
 - Adapters for other coding agents (Claude Code, Gemini CLI) with clear permission boundaries.
-- Character animations, workspace customization and agent movement driven by real events.
+- Further character movement around the office and workspace customization.
 - Desktop distribution, setup wizard and more comprehensive live execution tests.
 
 ## Contributing

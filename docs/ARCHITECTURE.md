@@ -29,6 +29,8 @@ The API is local-only, unauthenticated, and restricted to loopback host/origins.
 
 The Studio execution inspector reuses task data from the same SSE snapshots. Its timeline shows the last 35 server-recorded events per task in newest-first order; phase, elapsed time, error details and token usage are derived from those snapshots. The elapsed clock runs in the browser while a task is active, and stops after the task finishes. Selecting an avatar shows its running task or most recent task; selecting a task tile/history entry inspects that specific execution. Demo events are simulated.
 
+The 3D workstations also use those task snapshots. `src/scene/agentBehavior.ts` maps a running task phase to a character pose, or displays a celebration/error reaction for eight seconds after a completed/failed task. The scene temporarily prioritizes a recent terminal event over another running task on the same agent so that the reaction remains visible. After the reaction ends, the currently running task is shown again. Status labels are translated in the selected locale; demo mode drives the same animation system from simulated events. These gestures represent **reported task states**, not continuous observation of the agent's keyboard, reasoning or filesystem activity.
+
 The browser uses the EventSource API to receive snapshots. The server stores bounded task history in `.local/tasks.json`, which can include the prompts, workspace paths, and short command output excerpts. It is intentionally private and excluded from version control.
 
 ## Directories

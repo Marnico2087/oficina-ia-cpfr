@@ -25,6 +25,20 @@ footer{padding:20px 37px;display:flex;justify-content:space-between;gap:10px;bor
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 .scene-loading{display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#dbe5ff;font-size:13px;font-weight:600;letter-spacing:.3px}
 
+/* Phase badges are attached to 3D workstations and follow the selected locale. */
+.office-3d-shell{position:relative;width:100%;height:100%}
+.scene-phase-overlay{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.scene-phase-label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;border:1px solid #536a8d;background:#16243bea;color:#e3efff;box-shadow:0 4px 16px #020d2280;padding:5px 9px;border-radius:8px;font:700 10px 'DM Sans',system-ui,sans-serif;letter-spacing:.15px;user-select:none}
+.scene-phase-overlay .scene-phase-label{position:absolute;transform:translate(-50%,-50%);left:-100px;top:-100px}
+.scene-phase-label i{width:6px;height:6px;flex:none;border-radius:50%;background:#a4b5ce}
+.scene-phase-label.phase-thinking i{background:#f3ce83}
+.scene-phase-label.phase-coding i{background:#69e1b1}
+.scene-phase-label.phase-researching i{background:#aa99ff}
+.scene-phase-label.phase-finishing i,.scene-phase-label.phase-celebrating i{background:#68e4a7}
+.scene-phase-label.phase-error{border-color:#cd6d82;color:#ffe9ed}
+.scene-phase-label.phase-error i{background:#ff7894}
+.scene-phase-label.phase-idle{opacity:.75}
+
 /* Event inspector: a compact status console driven by real task events. */
 .execution-inspector{min-width:0;margin-top:16px;border:1px solid #e6e9f4;border-radius:12px;background:#fff;overflow:hidden}
 .execution-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 13px;border-bottom:1px solid #eef0f5}

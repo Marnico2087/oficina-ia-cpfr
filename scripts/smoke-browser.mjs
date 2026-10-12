@@ -46,6 +46,12 @@ try {
   assert.equal(renderState.webgl, true, 'WebGL 2 unavailable')
   assert.equal(renderState.contextLost, false, 'WebGL context was lost')
   assert.ok(renderState.drawingBuffer?.[0] > 0, 'WebGL drawing buffer unavailable')
+  await page.waitForSelector('.scene-phase-label[data-agent="nova"]')
+  await page.waitForFunction(() => document.querySelectorAll('.scene-phase-label').length === 4, { timeout: 12000 })
+  const demoPoses = await page.$$eval('.scene-phase-label', badges => Object.fromEntries(
+    badges.map(badge => [badge.dataset.agent, badge.dataset.pose])))
+  assert.deepEqual(demoPoses, { atlas: 'thinking', nova: 'coding', pixel: 'idle', sentinel: 'idle' },
+    'Initial 3D character phases must match Demo tasks')
   // Read the browser's composed screenshot, not the WebGL buffer between frames.
   const sceneElement = await page.$('.scene-frame')
   const sceneImage = PNG.sync.read(await sceneElement.screenshot({ type: 'png' }))
@@ -101,6 +107,7 @@ try {
   await page.reload({ waitUntil: 'networkidle2' })
   assert.equal(await page.$eval('html', el => el.lang), 'pt-BR', 'Locale should persist across reload')
   assert.match(await page.$eval('h1', el => el.textContent), /Central de controle/)
+  assert.match(await page.$eval('.scene-phase-label[data-agent="nova"]', el => el.textContent), /Programando/, '3D phase badge should follow the locale')
   assert.doesNotMatch(await page.$eval('.task-tile strong', el => el.textContent), /^Build the dashboard/i, 'Bundled demo prompts should be localized')
   await page.$eval('.intro .primary-btn', el => el.click())
   await page.type('#prompt', 'Mission control')
@@ -110,6 +117,9 @@ try {
   assert.match(await page.$eval('.execution-inspector h3', el => el.textContent), /Inspetor de execução/)
   await page.waitForFunction(() => document.querySelectorAll('.execution-log li').length >= 2, { timeout: 6000 })
   assert.match(await page.$eval('.execution-stats', el => el.textContent), /Programando/, 'Demo phase should advance')
+  await page.waitForFunction(() => document.querySelector('.scene-phase-label[data-agent="nova"]')?.dataset.pose === 'coding', { timeout: 5000 })
+  await page.waitForFunction(() => document.querySelector('.scene-phase-label[data-agent="nova"]')?.dataset.pose === 'celebrating', { timeout: 12000 })
+  await page.waitForFunction(() => document.querySelector('.scene-phase-label[data-agent="nova"]')?.dataset.pose === 'coding', { timeout: 11000 })
   await click('Atividades e tarefas')
   await page.$eval('.detail-task button[aria-label="Mostrar agente"]', el => el.click())
   assert.equal(await page.$eval('.execution-prompt', el => el.textContent), 'Mission control', 'History must open the exact task')
@@ -118,7 +128,7 @@ try {
   assert.match(await page.$eval('h1', el => el.textContent), /Configurações do espaço de trabalho/)
   assert.equal(await page.$eval('#interface-language', el => el.value), 'pt-BR')
   assert.deepEqual(errors, [], 'Browser console errors: ' + errors.join(' | '))
-  console.log(JSON.stringify({ ok: true, screenshot, renderState, languagesChecked: options.length, persistedLanguage: 'pt-BR', mobileSettings: true, pagesChecked: ['studio', 'modal', 'tasks', 'team', 'settings'] }, null, 2))
+  console.log(JSON.stringify({ ok: true, screenshot, renderState, demoPoses, phaseTransitionsChecked: true, languagesChecked: options.length, persistedLanguage: 'pt-BR', mobileSettings: true, pagesChecked: ['studio', 'modal', 'tasks', 'team', 'settings'] }, null, 2))
 } finally {
   await browser.close()
 }
