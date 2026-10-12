@@ -19,3 +19,8 @@ jobs:
       - run: npm run test:behavior
       - run: npm run build
       - run: npm run check:server
+      - run: npm run package:vscode
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-office-vscode
+          path: work/agent-office-vscode.vsix

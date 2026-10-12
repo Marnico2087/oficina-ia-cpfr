@@ -9,7 +9,9 @@ import { discoverProviders, foldersOverlap, launchArgs } from './providers.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
-const STORE = join(ROOT, '.local', 'tasks.json')
+// Installed CLI writes history to a user-writable directory. Source development
+// keeps the existing .local/tasks.json location for backwards compatibility.
+const STORE = join(process.env.AGENT_OFFICE_DATA_DIR || join(ROOT, '.local'), 'tasks.json')
 const PORT = Number(process.env.PORT || 4300)
 const MAX_TASKS = 150
 const MAX_PROMPT = 10000

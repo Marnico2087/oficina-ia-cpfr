@@ -14,7 +14,23 @@
 
 ## Quick start
 
-**Windows:** Download the [ZIP from GitHub](https://github.com/Munizada/agent-office/archive/refs/heads/main.zip), extract it to a normal folder, and double-click **`START-WINDOWS.cmd`**. You need Node.js installed once. The starter installs missing dependencies, builds the interface and starts it at **http://127.0.0.1:4300/** (reload the browser if it opens before the server starts). Keep the terminal open. A ZIP download does not update automatically; download a newer release or use Git.
+**Install once** (Windows, Linux or macOS):
+
+```bash
+npm install -g github:Munizada/agent-office
+```
+
+Then, in **any project folder**, run:
+
+```bash
+agent-office
+```
+
+The office opens at **http://127.0.0.1:4300/** and uses the terminal's current folder as its default workspace. Keep the terminal open while using it (Ctrl+C stops the office). For PowerShell installations where `npm` is blocked by script policy, use `npm.cmd install -g github:Munizada/agent-office`. You need Node.js and npm installed. To update later, run the same install command again.
+
+Options: `agent-office --no-open` (start without opening your browser), `agent-office --port 4400` (use a different port), or `agent-office --workspace /path/to/project` (select another project directory). For VS Code's integrated terminal, `agent-office` also works directly.
+
+**Inside VS Code:** install the companion extension `.vsix` from [GitHub Releases](https://github.com/Munizada/agent-office/releases), then use **Ctrl+Shift+P → Agent Office: Open 3D Office**. The office appears in a VS Code tab and automatically uses the open project folder. See [VS Code extension guide](vscode-extension/README.md). Other editors can use the browser interface launched from their integrated terminals.
 
 **Linux/macOS or development:** Run from this folder:
 
@@ -37,7 +53,7 @@ And in the second terminal:
 npm run dev
 ```
 
-By default, real tasks use this project's root folder. **Choose your actual project folder in Settings** before launching a task. Each task starts a new CLI process with its own prompt. The four visual avatars are task slots; they do not observe existing external chat sessions or automatically coordinate. The server rejects overlapping workspace folders while its own tasks are running.
+When launched via `agent-office`, real tasks default to your terminal's current directory; when started from the source using `npm run dev:all`, they default to this project's root. Change the folder in Settings if needed. Each task starts a new CLI process with its own prompt. The four visual avatars are task slots; they do not observe existing external chat sessions or automatically coordinate. The server rejects overlapping workspace folders while its own tasks are running.
 
 **Codex Web GPT / Codex desktop integration:** If you use [Codex Web GPT](https://github.com/miuuyy/codex-chatgpt-web), choose the same repository folder to launch a fresh independent CLI task there. The Agent Office does not connect to its tunnel, Native2 bridge, chat, or existing Codex processes. Avoid modifying the same files concurrently in the two apps; the folder conflict guard cannot detect external applications. Your Codex Web GPT configuration and authentication are never changed by setup.
 
@@ -71,9 +87,12 @@ npm run server
 | Command | Action |
 | --- | --- |
 | `npm run dev` | Local front end at 127.0.0.1:5173 |
+| `agent-office` | Run the globally installed office for the current project |
+| `agent-office --no-open --port 4400` | Run headlessly on a different local port |
+| `npm run package:vscode` | Build VS Code VSIX installer in `work/` |
 | `npm run dev:all` | Start both front end and local API in one terminal |
 | `npm start` | Serve built UI and local API at 127.0.0.1:4300 (run `npm run build` first) |
-| `START-WINDOWS.cmd` | Windows starter: install dependencies, build, start and open browser |
+| `START-WINDOWS.cmd` | Older Windows starter, retained for compatibility |
 | `npm run server` | Local AI CLI bridge at 127.0.0.1:4300 |
 | `npm run build` | Type-check and production build |
 | `npm run lint` | Static code checks |
@@ -91,14 +110,14 @@ CLI detection checks whether a command is installed, **not whether you are signe
 
 `smoke:live` creates disposable test directories inside `.local/`; it runs two real Codex sessions, so it requires an authenticated CLI and can incur usage costs. Do not run it as part of an untrusted CI workflow.
 
-Task prompts, statuses, phase updates, recent events (up to 35 per task) and short output excerpts are saved locally in `.local/tasks.json`, excluded from Git. Avoid putting credentials in task instructions. The API has no user authentication and must **never** be exposed publicly on a network.
+Task prompts, statuses, phase updates, recent events (up to 35 per task) and short output excerpts are saved locally in `.local/tasks.json` in source development, or in a folder specific to each workspace under your user state directory (`%LOCALAPPDATA%\\AgentOffice` on Windows, `~/.local/state/agent-office` on Linux, etc.) when started with the globally installed CLI. This prevents separate project windows from overwriting each other's history. These files are not committed. Avoid putting credentials in task instructions. The API has no user authentication and must **never** be exposed publicly on a network.
 
 ## Roadmap
 
 - True multi-agent planning, handoffs, coordination, shared context, and delegation.
 - More provider integrations and full real-world cross-platform testing for Gemini CLI and Claude Code.
 - Further character movement around the office and workspace customization.
-- Packaged signed desktop installer and setup wizard (Windows starter is available today).
+- Marketplace publication for the VS Code extension and standalone desktop packages. A manually installable VSIX is available through GitHub Releases.
 
 ## Contributing
 

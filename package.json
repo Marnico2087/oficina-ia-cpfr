@@ -4,7 +4,15 @@
   "version": "0.1.0",
   "description": "A live 3D mission control for coding agents",
   "type": "module",
+  "bin": {
+    "agent-office": "./bin/agent-office.mjs"
+  },
+  "files": ["bin/", "server/", "dist/", "README.md", "LICENSE"],
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
+    "prepare": "npm run build",
     "dev": "vite --host 127.0.0.1",
     "dev:all": "node scripts/dev.mjs",
     "server": "node server/index.mjs",
@@ -12,8 +20,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview --host 127.0.0.1",
-    "check:server": "node --check server/index.mjs",
-    "test:behavior": "node --test scripts/test-agent-behavior.mjs scripts/test-providers.mjs",
+    "check:server": "node --check server/index.mjs && node --check bin/agent-office.mjs && node --check vscode-extension/extension.cjs",
+    "test:behavior": "node --test scripts/test-agent-behavior.mjs scripts/test-providers.mjs scripts/test-cli.mjs scripts/test-vscode.mjs",
+    "package:vscode": "cd vscode-extension && npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies --out ../work/agent-office-vscode.vsix",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "smoke:live": "node scripts/smoke-live.mjs",
     "smoke:live-ui": "node scripts/smoke-live-ui.mjs",
@@ -21,15 +30,15 @@
     "verify:public": "npm run check:public && npm run lint && npm run test:behavior && npm run build && npm run check:server"
   },
   "dependencies": {
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
-    "express": "^5.3.0",
     "lucide-react": "^1.55.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "three": "^0.186.1"
-  },
-  "devDependencies": {
+    "three": "^0.186.1",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

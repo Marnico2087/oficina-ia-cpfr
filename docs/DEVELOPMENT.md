@@ -6,7 +6,9 @@ Install Node.js with npm (Node 24 recommended; minimum supported by Vite: Node 2
 
 ### Windows (PowerShell)
 
-For non-developers, download the source ZIP, extract it, and double-click `START-WINDOWS.cmd`. The starter installs missing packages, builds and serves the finished interface at http://127.0.0.1:4300/. Close the terminal to stop the server. An extracted ZIP is not updated automatically.
+For normal use on Windows, Linux or macOS, install the CLI once with `npm install -g github:Munizada/agent-office` (PowerShell alternative: `npm.cmd install -g github:Munizada/agent-office`). Run `agent-office` inside the directory of any project. Re-run the install command to update. The old `START-WINDOWS.cmd` remains as a legacy alternative.
+
+For IDE use, install the companion `.vsix` distributed in GitHub Releases (or built using `npm run package:vscode`). In VS Code run **Agent Office: Open 3D Office** from the Command Palette after opening a project folder. The extension launches the CLI with that workspace on a free loopback port and shows the UI in a Simple Browser editor tab. More details: `vscode-extension/README.md`.
 
 ```powershell
 git clone https://github.com/Munizada/agent-office.git
@@ -43,6 +45,8 @@ These are optional **process environment variables**, not an automatically loade
 | --- | --- |
 | `npm run dev:all` | Local API + UI in one terminal |
 | `npm start` | Serve the built UI and API together on localhost:4300 after `npm run build` |
+| `agent-office` | Launch globally installed office for the current folder |
+| `npm run package:vscode` | Create VS Code VSIX in `work/` |
 | `npm run dev` | UI only |
 | `npm run server` | API only |
 | `npm run lint` | Source checks |
@@ -72,5 +76,5 @@ A failed check must be fixed before pushing. Never use `--no-verify` to bypass s
 - **Codex Web GPT**: selecting its repository folder creates fresh independent tasks; it does not mirror existing Codex Web GPT conversations. Avoid simultaneous edits through both apps.
 - **Task fails to start**: check absolute workspace path, write permissions, CLI configuration and the error shown in Activity.
 - **Port occupied**: stop the previous Agent Office API/web instance before starting another.
-- **Tasks missing after restart**: inspect `.local/tasks.json`; it is local-only and excluded from Git.
+- **Tasks missing after restart**: development saves to `.local/tasks.json`; the global CLI stores history in a workspace-specific subfolder of the user state directory (`%LOCALAPPDATA%\\AgentOffice` on Windows). Both stay local and private.
 - **Language changed**: Settings → Language; selection is saved in browser local storage.

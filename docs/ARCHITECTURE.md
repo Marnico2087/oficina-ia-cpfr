@@ -3,7 +3,7 @@
 Agent Office is a local web interface for starting and observing local coding-agent CLI tasks.
 
 ```text
-Browser (127.0.0.1:5173)
+Browser / VS Code Simple Browser (local port)
   React + TypeScript + Vite
    ├─ src/views/          Studio, task history, team, settings
    ├─ src/components/     Sidebar, avatars, task cards, task dialog
@@ -11,11 +11,11 @@ Browser (127.0.0.1:5173)
    └─ src/locales/        Translation engine, provider, 20 locale packs
             │ REST / Server-Sent Events
             ▼
-Local Express API (127.0.0.1:4300)
+Local Express API (127.0.0.1:4300, or a CLI-selected port)
    ├─ discovers Codex CLI, Claude Code and Gemini CLI at startup
    ├─ starts/cancels local CLI subprocesses
    ├─ streams task status and progress events
-   └─ writes private .local/tasks.json (ignored)
+   └─ writes private task history (source .local/ or user state directory)
             │
             ▼
 Selected CLI → filesystem inside the selected project directory
@@ -48,6 +48,8 @@ The studio loads the 3D renderer on demand. Production builds split the Three.js
 | `src/index.css` | Styling and responsive layout |
 | `server/index.mjs` | Local Express API, event parser, file history and CLI process control |
 | `server/providers.mjs` | CLI adapters, binary discovery and folder overlap checking |
+| `bin/agent-office.mjs` | Globally installed terminal launcher with workspace selection |
+| `vscode-extension/` | VS Code companion that launches CLI and opens a Simple Browser tab |
 | `START-WINDOWS.cmd` | One-click Windows startup and first-run dependency installation |
 | `scripts/` | Dev launcher, translation generator, validation and smoke tests |
 | `public/` | Static assets |
