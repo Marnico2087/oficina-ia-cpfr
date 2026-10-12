@@ -2,7 +2,7 @@
 
 **Open-source 3D mission control for local AI coding agents.** Inspect an animated office, assign Codex CLI, Claude Code or Gemini CLI tasks, follow execution events, and track task history. Built with React, TypeScript, React Three Fiber, Three.js, and Node/Express.
 
-> **Project status: functional prototype (v0.2).** Agent profiles are configurable visual task slots backed by separate CLI executions. They do not yet share memory, delegate or form a coordinated multi-agent workflow. In Demo mode, all activity is simulated and no code is executed. Codex is the most extensively tested provider; Claude Code support is experimental and Gemini CLI support has not been tested on a machine with Gemini installed.
+> **Project status: functional prototype (v0.3).** Agent profiles are configurable visual task slots backed by separate CLI executions. They do not yet share memory, delegate or form a coordinated multi-agent workflow. Walking and ambient conversations are visual simulations, not real agent communication. In Demo mode, all activity is simulated and no code is executed. Codex is the most extensively tested provider; Claude Code support is experimental and Gemini CLI support has not been tested on a machine with Gemini installed.
 
 ![Agent Office 3D demo](docs/office-preview.png)
 
@@ -61,6 +61,8 @@ Open **Agent team → Add agent** to create as many profiles as your setup needs
 
 The 3D campus groups agents into nine purpose-specific departments: architecture, engineering, design, quality assurance, research, data/analytics, security, operations and shared space. Each room has relevant workstations and props; room depth and the campus footprint expand automatically. Teams with more than eight agents open with an automatically fitted campus overview. Select any agent card to focus its workstation, then use the bottom-right overview button to see the entire campus again. To protect 3D performance, **teams over 50 display the 50 nearest detailed 3D workstations at a time**; all agents still have assigned places and remain selectable. A large roster does not mean that the machine can run that many CLI jobs simultaneously. CPU/RAM, provider limits and the existing one-job-per-overlapping-project guard still apply.
 
+**Customize your office in Settings → Office appearance:** choose bright white/daylight, midnight or warm color palettes; compact, balanced or spacious rooms; an office-wide accent color; and individual colors for all nine departments. Pick off, subtle or lively avatar movement and enable/disable simulated social bubbles. Rooms and connecting corridors are regenerated from the live roster and department assignments. Appearance preferences persist in the current browser; agent profiles and task history remain in the local API data directory. Agents stand at their desks when executing a task, and idle avatars follow short paths through their rooms. **Walking and social bubbles are ambient visual effects, not evidence of agent conversations, collaboration or task progress.** Real task phase/status continues to be shown separately from API execution events.
+
 ![Automatically expanded office with 20 agents across nine departments](docs/office-expanded.png)
 
 Profiles are saved locally in `agents.json` next to the private task history, survive restarts, and are scoped to the current Agent Office data directory. You can safely remove the last agent and rebuild your team from zero. Finished task history stays intact when its agent is removed. Demo mode only simulates activity for existing sample agents; it never consumes CLI tokens.
@@ -86,6 +88,7 @@ npm run server
 ## What works
 
 - Rotate and zoom the 3D office; click an avatar to inspect their task. The characters react visually to their reported phases: thinking, coding, researching, finishing, or idle. A completed task triggers a brief celebration; a failed/interrupted task triggers an error reaction. Phase labels follow the interface language.
+- Customize themes, spacing, corridor layout, department colors, office accent, avatar movement and social effects. Idle avatars can walk between their assigned desk and the room's shared area. Appearance settings stay on this browser and can be reset at any time.
 - Launch an independent CLI task per avatar, choosing Codex, Claude Code or Gemini per task and targeting an absolute local project directory. Provider detection is performed at API startup; restart after installation.
 - Stream command, file-change, research and progress events to the office through Server-Sent Events (SSE).
 - Inspect a selected agent's execution phase, live elapsed time, latest update, chronological event details, errors and token usage (when reported by Codex). Select a task from the feed or history to inspect that exact run.
@@ -128,7 +131,7 @@ Task prompts, statuses, phase updates, recent events (up to 35 per task) and sho
 
 - True multi-agent planning, handoffs, coordination, shared context, and delegation.
 - More provider integrations and full real-world cross-platform testing for Gemini CLI and Claude Code.
-- Further character movement, custom room furniture and richer per-agent personalization.
+- Drag-and-drop room layout editing, custom furniture, shared lounge areas, and richer agent appearance customization.
 - Marketplace publication for the VS Code extension and standalone desktop packages. A manually installable VSIX is available through GitHub Releases.
 
 ## Contributing

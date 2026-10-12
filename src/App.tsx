@@ -11,6 +11,8 @@ import { Studio } from './views/Studio';
 import { TaskList } from './views/Tasks';
 import { Team } from './views/Team';
 import { Settings } from './views/Settings';
+import { OfficePreferencesContext } from './scene/OfficePreferencesContext';
+import { loadOfficePreferences, normalizeOfficePreferences, OFFICE_PREFERENCES_KEY } from './scene/officePreferences';
 
 export default function App() {
     const { t: tr, formatTime } = useLanguage();
@@ -22,6 +24,14 @@ export default function App() {
     const [server, setServer] = useState<ServerState | null>(null);
     const [online, setOnline] = useState(false);
     const [workspace, setWorkspace] = useState('');
+    const [officePreferences, setOfficePreferences] = useState(loadOfficePreferences);
+    function updateOfficePreferences(update: Partial<typeof officePreferences>) {
+        setOfficePreferences(current => {
+            const next = normalizeOfficePreferences({ ...current, ...update });
+            try { localStorage.setItem(OFFICE_PREFERENCES_KEY, JSON.stringify(next)); } catch { /* Storage disabled */ }
+            return next;
+        });
+    }
     const [provider, setProvider] = useState<ProviderId>(() => {
         try { const stored = localStorage.getItem('agent-office-provider'); if (stored === 'claude' || stored === 'gemini') return stored; } catch { /* Storage disabled */ }
         return 'codex';
@@ -122,8 +132,8 @@ export default function App() {
             return true;
         } catch (error) { notice(error instanceof Error ? error.message : 'Unable to remove agent'); return false; }
     }
-    return <AgentsContext.Provider value={agents}><div className="shell"><Sidebar view={view} setView={setView} onNew={() => showNew()}/><div className="app-main"><header className="topbar"><div className="crumb"><span><Command size={15}/></span>{" " + tr("My workspace") + " "}<b>/</b><strong>{view === 'studio' ? tr("Office studio") : view === 'tasks' ? tr("Activity & tasks") : view === 'team' ? tr("Agent team") : tr("Settings")}</strong><ChevronDown size={13}/></div><div className="topbar-actions"><time>{formatTime(now)}</time><i /><span className={`api-badge ${cliReady ? 'on' : ''}`}>{cliReady ? <Wifi size={14}/> : <WifiOff size={14}/>} {cliReady ? tr("READY") : online ? tr("NOT FOUND") : tr("API OFFLINE")}</span><button className={`mode-btn ${demo ? 'demo' : 'live'}`} onClick={() => { setDemo(!demo); notice(demo ? tr("Showing real Codex events") : tr("Showing demo preview")); }}><Dot status={demo ? 'amber' : 'running'}/>{demo ? tr("DEMO MODE") : tr("LIVE MODE")} <ChevronDown size={13}/></button></div></header>
-      <div className="page-content">{view === 'studio' && <Studio tasks={tasks} selected={resolvedSelected} setSelected={setSelected} selectedTask={selectedTask} setSelectedTask={setSelectedTask} onNew={() => showNew()} demo={demo} ready={Boolean(online && server?.providers?.some(p => p.available))}/>}{view === 'tasks' && <TaskList tasks={tasks} onSelect={(id, taskId) => { setSelected(id); setSelectedTask(taskId); setView('studio'); }} cancel={cancel}/>} {view === 'team' && <Team tasks={tasks} onTask={showNew} onSave={saveAgent} onDelete={deleteAgent} connected={online}/>} {view === 'settings' && <Settings workspace={workspace} setWorkspace={setWorkspace} demo={demo} setDemo={setDemo} server={server}/>}</div><footer><span>© 2026 Agent Office <b>✳</b>{" " + tr("Made for builders")}</span><span>v0.2.0 <i>·</i>{" " + tr("Open source")}</span></footer></div>
+    return <OfficePreferencesContext.Provider value={{ preferences: officePreferences, updatePreferences: updateOfficePreferences }}><AgentsContext.Provider value={agents}><div className="shell"><Sidebar view={view} setView={setView} onNew={() => showNew()}/><div className="app-main"><header className="topbar"><div className="crumb"><span><Command size={15}/></span>{" " + tr("My workspace") + " "}<b>/</b><strong>{view === 'studio' ? tr("Office studio") : view === 'tasks' ? tr("Activity & tasks") : view === 'team' ? tr("Agent team") : tr("Settings")}</strong><ChevronDown size={13}/></div><div className="topbar-actions"><time>{formatTime(now)}</time><i /><span className={`api-badge ${cliReady ? 'on' : ''}`}>{cliReady ? <Wifi size={14}/> : <WifiOff size={14}/>} {cliReady ? tr("READY") : online ? tr("NOT FOUND") : tr("API OFFLINE")}</span><button className={`mode-btn ${demo ? 'demo' : 'live'}`} onClick={() => { setDemo(!demo); notice(demo ? tr("Showing real Codex events") : tr("Showing demo preview")); }}><Dot status={demo ? 'amber' : 'running'}/>{demo ? tr("DEMO MODE") : tr("LIVE MODE")} <ChevronDown size={13}/></button></div></header>
+      <div className="page-content">{view === 'studio' && <Studio tasks={tasks} selected={resolvedSelected} setSelected={setSelected} selectedTask={selectedTask} setSelectedTask={setSelectedTask} onNew={() => showNew()} demo={demo} ready={Boolean(online && server?.providers?.some(p => p.available))}/>}{view === 'tasks' && <TaskList tasks={tasks} onSelect={(id, taskId) => { setSelected(id); setSelectedTask(taskId); setView('studio'); }} cancel={cancel}/>} {view === 'team' && <Team tasks={tasks} onTask={showNew} onSave={saveAgent} onDelete={deleteAgent} connected={online}/>} {view === 'settings' && <Settings workspace={workspace} setWorkspace={setWorkspace} demo={demo} setDemo={setDemo} server={server}/>}</div><footer><span>© 2026 Agent Office <b>✳</b>{" " + tr("Made for builders")}</span><span>v0.3.0 <i>·</i>{" " + tr("Open source")}</span></footer></div>
     {modal && agents.length > 0 && <NewTask agent={resolvedSelected} setAgent={setSelected} provider={provider} setProvider={chooseProvider} providers={server?.providers || []} workspace={workspace} setWorkspace={setWorkspace} close={() => setModal(false)} start={start} busy={busy} demo={demo}/>}{toast && <div className="toast"><CheckCircle2 size={17}/>{tr(toast)}<button onClick={() => setToast('')} aria-label={tr("Dismiss toast")}><X size={14}/></button></div>}
-  </div></AgentsContext.Provider>;
+  </div></AgentsContext.Provider></OfficePreferencesContext.Provider>;
 }

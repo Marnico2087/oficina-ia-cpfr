@@ -78,3 +78,4 @@ A failed check must be fixed before pushing. Never use `--no-verify` to bypass s
 - **Port occupied**: stop the previous Agent Office API/web instance before starting another.
 - **Tasks missing after restart**: development saves to `.local/tasks.json`; the global CLI stores history in a workspace-specific subfolder of the user state directory (`%LOCALAPPDATA%\\AgentOffice` on Windows). Both stay local and private.
 - **Language changed**: Settings → Language; selection is saved in browser local storage.
+- **Change office appearance**: Settings → Office appearance; themes, spacing, departmental colors, walking and ambient interactions save in browser local storage, separate from the server's private agent roster. "Restore office defaults" resets the appearance only.

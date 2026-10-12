@@ -2,6 +2,13 @@ import { RoundedBox } from '@react-three/drei'
 import { DEPARTMENTS } from '../agents'
 import type { Department } from '../types'
 import type { OfficeLayout, Sector } from './officeLayout'
+import type { OfficePreferences } from './officePreferences'
+
+const THEMES = {
+  daylight: { floor: '#e7edf3', tile: '#f7f9fc', wall: '#e9f0f7', outline: '#b7c9d8', frame: '#e5edf4', window: '#9dcae7', outer: '#dbe5ef', furniture: '#b9a493' },
+  midnight: { floor: '#26364a', tile: '#304156', wall: '#182941', outline: '#6a8ca8', frame: '#16273d', window: '#6a98bd', outer: '#172538', furniture: '#a48b78' },
+  warm: { floor: '#ecdfd2', tile: '#f8efe4', wall: '#f0e4d9', outline: '#d3b6a0', frame: '#e5d5c5', window: '#add5e5', outer: '#e8d8c8', furniture: '#b89980' },
+} as const
 
 function Planter({ x, z }: { x: number; z: number }) {
   return <group position={[x, 0, z]}>
@@ -43,21 +50,23 @@ function DepartmentProps({ id, width, depth }: { id: Department; width: number; 
   return <><Panel x={0} y={2.12} z={back} w={2.6} h={1.1} color="#758da9"/></>
 }
 
-function SectorRoom({ sector }: { sector: Sector }) {
+function SectorRoom({ sector, preferences }: { sector: Sector; preferences: OfficePreferences }) {
   const { center: [cx, , cz], width, depth, id } = sector
-  const accent = DEPARTMENTS.find(dep => dep.id === id)?.color || '#9aacc0'
+  const accent = preferences.sectorColors[id] || DEPARTMENTS.find(dep => dep.id === id)?.color || '#9aacc0'
+  const palette = THEMES[preferences.theme]
   return <group position={[cx, 0, cz]}>
-    <RoundedBox args={[width, .29, depth]} radius={.13} position={[0, -.21, 0]} receiveShadow><meshStandardMaterial color="#26364a" roughness={.91}/></RoundedBox>
-    <mesh position={[0, -.049, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[width - .55, depth - .55]}/><meshStandardMaterial color={id === 'design' ? '#344050' : '#304156'} roughness={.93}/></mesh>
-    <mesh position={[0, .014, -depth / 2 + .18]}><boxGeometry args={[width, .05, .26]}/><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={.22}/></mesh>
-    <mesh position={[0, 1.7, -depth / 2]}><boxGeometry args={[width, 3.55, .22]}/><meshStandardMaterial color="#182941"/></mesh>
+    <RoundedBox args={[width, .29, depth]} radius={.13} position={[0, -.21, 0]} receiveShadow><meshStandardMaterial color={palette.floor} roughness={.91}/></RoundedBox>
+    <mesh position={[0, -.049, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[width - .55, depth - .55]}/><meshStandardMaterial color={palette.tile} roughness={.93}/></mesh>
+    <mesh position={[0, .014, -depth / 2 + .18]}><boxGeometry args={[width, .05, .26]}/><meshStandardMaterial color={preferences.accent} emissive={preferences.accent} emissiveIntensity={.08}/></mesh>
+    <mesh position={[0, .01, depth / 2 - .4]}><boxGeometry args={[width - 2, .035, .18]}/><meshStandardMaterial color={accent}/></mesh>
+    <mesh position={[0, 1.7, -depth / 2]}><boxGeometry args={[width, 3.55, .22]}/><meshStandardMaterial color={palette.wall}/></mesh>
     {[-1, 0, 1].map(i => <group key={i} position={[i * 3.35, 2.55, -depth / 2 + .15]}>
-      <mesh><boxGeometry args={[2.75, 1.35, .038]}/><meshStandardMaterial color="#16273d" emissive="#233e65" emissiveIntensity={.35}/></mesh>
-      <mesh position={[0, 0, .035]}><boxGeometry args={[2.58, 1.2, .015]}/><meshStandardMaterial color="#6a98bd" transparent opacity={.2} metalness={.6}/></mesh>
+      <mesh><boxGeometry args={[2.75, 1.35, .038]}/><meshStandardMaterial color={palette.frame} emissive="#233e65" emissiveIntensity={.08}/></mesh>
+      <mesh position={[0, 0, .035]}><boxGeometry args={[2.58, 1.2, .015]}/><meshStandardMaterial color={palette.window} transparent opacity={.28} metalness={.6}/></mesh>
       <mesh position={[0, 0, .06]}><boxGeometry args={[.045, 1.36, .03]}/><meshStandardMaterial color="#a5b9cc"/></mesh>
     </group>)}
-    <mesh position={[-width / 2, 1.25, 0]}><boxGeometry args={[.1, 2.5, depth]}/><meshStandardMaterial color="#6a8ca8" transparent opacity={.26}/></mesh>
-    <mesh position={[width / 2, 1.25, 0]}><boxGeometry args={[.1, 2.5, depth]}/><meshStandardMaterial color="#6a8ca8" transparent opacity={.26}/></mesh>
+    <mesh position={[-width / 2, 1.25, 0]}><boxGeometry args={[.1, 2.5, depth]}/><meshStandardMaterial color={palette.outline} transparent opacity={.26}/></mesh>
+    <mesh position={[width / 2, 1.25, 0]}><boxGeometry args={[.1, 2.5, depth]}/><meshStandardMaterial color={palette.outline} transparent opacity={.26}/></mesh>
     <mesh position={[-width / 2 + 1.5, 2.05, depth / 2 - .05]}><boxGeometry args={[3, 1.3, .07]}/><meshStandardMaterial color="#7394ab" transparent opacity={.18}/></mesh>
     <mesh position={[width / 2 - 1.5, 2.05, depth / 2 - .05]}><boxGeometry args={[3, 1.3, .07]}/><meshStandardMaterial color="#7394ab" transparent opacity={.18}/></mesh>
     <mesh position={[0, 3.76, 0]}><boxGeometry args={[width * .62, .07, .21]}/><meshStandardMaterial color="#e6f5ff" emissive="#84c8e4" emissiveIntensity={1}/></mesh>
@@ -67,10 +76,15 @@ function SectorRoom({ sector }: { sector: Sector }) {
   </group>
 }
 
-export function OfficeCampus({ layout }: { layout: OfficeLayout }) {
+export function OfficeCampus({ layout, preferences }: { layout: OfficeLayout; preferences: OfficePreferences }) {
+  const palette = THEMES[preferences.theme]
   return <group>
-    <mesh position={[layout.width / 2, -.46, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 3, .4, layout.depth + 3]}/><meshStandardMaterial color="#172538" roughness={.98}/></mesh>
-    {layout.sectors.map(sector => <SectorRoom key={sector.id} sector={sector}/>)}
+    <mesh position={[layout.width / 2, -.46, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 3, .4, layout.depth + 3]}/><meshStandardMaterial color={palette.outer} roughness={.98}/></mesh>
+    {layout.passages.map((passage, index) => <group key={index} position={[passage.x, -.1, passage.z]}>
+      <RoundedBox args={[passage.width, .18, passage.depth]} radius={.07} receiveShadow><meshStandardMaterial color={palette.tile}/></RoundedBox>
+      <mesh position={[0, .096, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[Math.max(.35, passage.width - .45), Math.max(.35, passage.depth - .45)]}/><meshStandardMaterial color={preferences.accent} transparent opacity={.16}/></mesh>
+    </group>)}
+    {layout.sectors.map(sector => <SectorRoom key={sector.id} sector={sector} preferences={preferences}/>)}
     <ambientLight intensity={.32} color="#b2d3f5"/>
   </group>
 }

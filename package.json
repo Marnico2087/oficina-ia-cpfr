@@ -1,7 +1,7 @@
 {
   "name": "agent-office",
   "private": false,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A live 3D mission control for coding agents",
   "type": "module",
   "bin": {

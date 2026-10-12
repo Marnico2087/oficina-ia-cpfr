@@ -210,7 +210,25 @@ Unable to save agent
 Unable to remove agent
 Add an agent to create tasks
 Former agent
-Show entire office`.split('\n')
+Show entire office
+Office appearance
+Customize the virtual workspace. Saved only in this browser.
+Visual style
+Bright modern
+Midnight
+Warm studio
+Room spacing
+Compact
+Balanced
+Spacious
+Agent movement
+Off
+Subtle
+Lively
+Office accent color
+Social animations
+Visual interactions are simulated, not real AI conversations.
+Restore office defaults`.split('\n')
 
 export const languages = [
   { code: 'pt-BR', name: 'Português (Brasil)' },
