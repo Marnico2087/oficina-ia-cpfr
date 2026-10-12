@@ -20,9 +20,9 @@ function fitBone(mesh: Mesh | undefined, start: RigPoint, end: RigPoint) {
   mesh.scale.y = length
 }
 
-export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedRef, socialRef }: {
+export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef, seatedRef, socialRef }: {
   agent: OfficeAgent; pose: AgentPose; selected: boolean; onSelect: () => void
-  walkRef: RefObject<number>; seatedRef: RefObject<number>; socialRef: RefObject<boolean>
+  walkRef: RefObject<number>; gaitRef: RefObject<number>; seatedRef: RefObject<number>; socialRef: RefObject<boolean>
 }) {
   const model = useRef<Group>(null)
   const torso = useRef<Group>(null)
@@ -38,6 +38,7 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedR
   const halo = useRef<Mesh>(null)
   const socialBlend = useRef(0)
   const thinkingBlend = useRef(0)
+  const walkBlend = useRef(0)
   const skin = agent.id === 'sentinel' ? '#c48c70' : agent.id === 'pixel' ? '#efc8ab' : '#dbad8c'
   const hair = agent.id === 'nova' ? '#2b4058' : agent.id === 'pixel' ? '#894f47' : agent.id === 'sentinel' ? '#41332f' : '#282b43'
 
@@ -45,7 +46,8 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedR
     const t = clock.elapsedTime
     socialBlend.current = MathUtils.damp(socialBlend.current, socialRef.current ? 1 : 0, 5, Math.min(delta, .05))
     thinkingBlend.current = MathUtils.damp(thinkingBlend.current, pose === 'thinking' ? 1 : 0, 4, Math.min(delta, .05))
-    const rig = makeAvatarRigPose(seatedRef.current, walkRef.current > 0, t, pose, socialBlend.current, thinkingBlend.current)
+    walkBlend.current = MathUtils.damp(walkBlend.current, walkRef.current, 8, Math.min(delta, .05))
+    const rig = makeAvatarRigPose(seatedRef.current, walkBlend.current, t, pose, socialBlend.current, thinkingBlend.current, gaitRef.current)
     if (model.current) model.current.position.y = rig.bob + (pose === 'celebrating' && seatedRef.current < .01 ? Math.abs(Math.sin(t * 5)) * .035 : 0)
     if (torso.current) {
       torso.current.position.y = -rig.torsoDrop
@@ -65,7 +67,10 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedR
       fitBone(thighs.current[index], leg.hip, leg.knee)
       fitBone(shins.current[index], leg.knee, leg.ankle)
       if (knees.current[index]) knees.current[index].position.set(...leg.knee)
-      if (shoes.current[index]) shoes.current[index].position.set(...leg.foot)
+      if (shoes.current[index]) {
+        shoes.current[index].position.set(...leg.foot)
+        shoes.current[index].rotation.x = rig.shoePitch[index]
+      }
     })
     if (halo.current) halo.current.rotation.z = t * .3
   })
@@ -136,8 +141,10 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, seatedR
         <mesh ref={node => { if (node) shins.current[index] = node }} castShadow>
           <cylinderGeometry args={[.105, .125, 1, 10]}/><meshStandardMaterial color="#344961" roughness={.9}/>
         </mesh>
-        <RoundedBox ref={node => { if (node) shoes.current[index] = node }} args={[.275, .16, .39]} radius={.045} castShadow>
+        <RoundedBox ref={node => { if (node) shoes.current[index] = node }} args={[.275, .12, .39]} radius={.045} castShadow>
           <meshStandardMaterial color="#233248" roughness={.86}/>
+          <mesh position={[0, -.055, .022]}><boxGeometry args={[.29, .035, .405]}/><meshStandardMaterial color="#c1cbd6" roughness={.84}/></mesh>
+          <mesh position={[0, .062, .07]}><boxGeometry args={[.16, .011, .12]}/><meshStandardMaterial color="#dce4ed" roughness={.87}/></mesh>
         </RoundedBox>
       </group>)}
     </group>

@@ -3,7 +3,8 @@ import type { OfficeSpacing } from './officePreferences'
 
 export type Seat = { agent: OfficeAgent; position: [number, number, number]; sector: Department }
 export type Sector = { id: Department; center: [number, number, number]; width: number; depth: number; count: number }
-export type OfficeLayout = { sectors: Sector[]; seats: Seat[]; width: number; depth: number; passages: { x: number; z: number; width: number; depth: number }[] }
+export type OfficeAmenity = { id: 'meeting' | 'coffee' | 'focus'; x: number; z: number }
+export type OfficeLayout = { sectors: Sector[]; seats: Seat[]; width: number; depth: number; passages: { x: number; z: number; width: number; depth: number }[]; amenities: OfficeAmenity[] }
 
 // Placement grows by rows; neither the agent registry nor scene has a fixed seat limit.
 // Every agent is assigned to exactly one seat in the department they chose.
@@ -13,14 +14,16 @@ export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing =
     .filter(group => group.agents.length > 0)
   const active = groups.length ? groups : [{ id: 'general' as const, agents: [] as OfficeAgent[] }]
   // Small teams share a compact coworking cluster instead of a long strip.
-  const columns = active.length <= 2 ? active.length : active.length <= 4 ? 2 : 3
+  const columns = active.length <= 3 ? active.length : active.length <= 6 ? 2 : 3
   const scale = spacing === 'compact' ? .91 : spacing === 'spacious' ? 1.2 : 1
   // Open-plan bays share one floor. The gaps are circulation lanes, not doors.
   const gap = 1.3 * scale
   // Small teams sit together in one open row; do not reserve three empty desks
   // for every single-agent department.
   const busiest = Math.max(1, ...active.map(group => group.agents.length))
-  const zoneWidth = (agents.length <= 12 ? 5.15 + (Math.min(3, busiest) - 1) * 3.62 : 11.7) * scale
+  // One desk needs one bay. Up to three desks share a row; avoid allocating
+  // three empty workstation slots when a sector contains one or two agents.
+  const zoneWidth = (5.15 + (Math.min(3, busiest) - 1) * 3.62) * scale
   const workstationPitch = 3.62 * scale
   const rowPitch = 3.72 * scale
   const rowHeights: number[] = []
@@ -66,7 +69,18 @@ export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing =
       passages.push({ x: sector.center[0], z: (topEdge + bottomEdge) / 2, width: 2.35, depth: Math.max(gap + .6, bottomEdge - topEdge + .5) })
     }
   })
-  return { sectors, seats, passages, width: columns * (zoneWidth + gap) - gap,
-    // Reserve a common lounge behind the circulation grid; it is not a workstation.
-    depth: rowHeights.reduce((sum, depth) => sum + depth + gap, -gap) + 3.45 * scale }
+  const width = columns * (zoneWidth + gap) - gap
+  const workDepth = rowHeights.reduce((sum, depth) => sum + depth + gap, -gap)
+  // Amenities appear only when the team needs them. A solo agent gets a compact
+  // work floor; larger teams progressively unlock shared facilities.
+  const amenities: OfficeAmenity[] = []
+  let sharedDepth = .85 * scale
+  if (agents.length >= 3) {
+    sharedDepth = (agents.length < 9 ? 3.45 : agents.length < 25 ? 4.3 : 5.2) * scale
+    const commonZ = workDepth + sharedDepth / 2
+    amenities.push({ id: 'meeting', x: width / 2, z: commonZ })
+    if (agents.length >= 9) amenities.push({ id: 'coffee', x: Math.max(1.25, width * .14), z: commonZ })
+    if (agents.length >= 25) amenities.push({ id: 'focus', x: width - Math.max(1.25, width * .14), z: commonZ })
+  }
+  return { sectors, seats, passages, amenities, width, depth: workDepth + sharedDepth }
 }

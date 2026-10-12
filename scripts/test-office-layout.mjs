@@ -52,6 +52,27 @@ test('avatar rig connects all limbs and aligns seated hands with mouse and keybo
   assert.deepEqual(makeAvatarRigPose(0, true, 1.25, 'idle', 1).arms, makeAvatarRigPose(0, true, 1.25, 'idle').arms,
     'walking cannot animate social gestures')
 })
+
+test('walking shoes use alternating planted steps with stable leg lengths', () => {
+  const samples = Array.from({ length: 33 }, (_, index) => index * Math.PI * 2 / 32)
+  for (const phase of samples) {
+    const pose = makeAvatarRigPose(0, 1, 0, 'idle', 0, 0, phase)
+    assert.ok(pose.legs.some(leg => Math.abs(leg.foot[1] - .082) < .00001), 'one shoe must remain planted')
+    for (const leg of pose.legs) {
+      const femur = Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i]))
+      const shin = Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i]))
+      assert.ok(Math.abs(femur - .445) < .001, 'femur stretches while walking')
+      assert.ok(Math.abs(shin - .435) < .001, 'shin stretches while walking')
+      assert.ok(leg.foot[1] >= .082 - 1e-7, 'shoe clips the floor')
+    }
+  }
+  const stopped = makeAvatarRigPose(0, 0, 0, 'idle', 0, 0, 2)
+  const moving = makeAvatarRigPose(0, 1, 0, 'idle', 0, 0, 2)
+  const settling = makeAvatarRigPose(0, .5, 0, 'idle', 0, 0, 2)
+  for (let leg = 0; leg < 2; leg++) {
+    assert.ok(Math.abs(settling.legs[leg].foot[2] - (stopped.legs[leg].foot[2] + moving.legs[leg].foot[2]) / 2) < 1e-8)
+  }
+})
 function makeTeam(count) {
   return Array.from({ length: count }, (_, index) => makeAgent({
     name: `Agent ${index}`, role: `Role ${index}`, specialty: `Specialty ${index}`,
@@ -108,13 +129,20 @@ test('walking paths stay outside workstation and chair footprints across multipl
   }
 })
 
-test('compact floor retains clear chair approaches, back-row walkways and a separate shared lounge', () => {
-  for (const count of [2, 4, 20, 50, 100, 250]) {
+test('compact floor retains clear chair approaches, back-row walkways and scaled shared spaces', () => {
+  for (const count of [1, 2, 3, 4, 8, 9, 20, 25, 50, 100, 250]) {
     for (const spacing of ['compact', 'regular', 'spacious']) {
       const layout = makeOfficeLayout(makeTeam(count), spacing)
       const farthestBayEdge = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2))
-      // Meeting furniture is centered in a strip behind the last team bay.
-      assert.ok(layout.depth - 1.73 - farthestBayEdge > 1.3, 'meeting table overlaps a team bay')
+      const expected = count < 3 ? [] : count < 9 ? ['meeting'] : count < 25 ? ['meeting', 'coffee'] : ['meeting', 'coffee', 'focus']
+      assert.deepEqual(layout.amenities.map(amenity => amenity.id), expected)
+      if (layout.amenities.length) {
+        assert.ok(layout.amenities[0].z - .55 - farthestBayEdge > .6, 'meeting table overlaps a team bay')
+        for (const amenity of layout.amenities) {
+          assert.ok(amenity.x > 0 && amenity.x < layout.width)
+          assert.ok(amenity.z < layout.depth)
+        }
+      } else assert.ok(layout.depth - farthestBayEdge < 1.5, 'solo floor has an unused lounge strip')
       for (const seat of layout.seats) {
         const sector = layout.sectors.find(item => item.id === seat.sector)
         const ordinal = layout.seats.filter(item => item.sector === seat.sector).indexOf(seat)
@@ -124,6 +152,19 @@ test('compact floor retains clear chair approaches, back-row walkways and a sepa
         assert.ok(route.points[3][1] - (seat.position[2] + CHAIR_Z + .55) > .6,
           'rear walkway is too close to the last row of chairs')
       }
+    }
+  }
+})
+
+test('small department bays expand only to fit occupied desk columns', () => {
+  for (const count of [1, 2, 3, 4, 20]) {
+    const team = makeTeam(count).map(agent => ({ ...agent, department: 'engineering' }))
+    const layout = makeOfficeLayout(team)
+    const columns = Math.min(3, count)
+    assert.ok(Math.abs(layout.width - (5.15 + 3.62 * (columns - 1))) < .001)
+    for (const seat of layout.seats) {
+      const left = seat.position[0] - 1.25, right = seat.position[0] + 1.25
+      assert.ok(left > 0 && right < layout.width, 'desk exceeds bay bounds')
     }
   }
 })

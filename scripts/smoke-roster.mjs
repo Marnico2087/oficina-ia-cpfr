@@ -150,20 +150,30 @@ try {
   await addMany(20, 30)
   await count(50)
   await phases(50)
+  // Exceed the detailed-rig budget: remaining desks and simplified characters
+  // must continue rendering, and focusing a remote worker must still work.
+  await addMany(50, 30)
+  await count(80)
+  await phases(50)
+  await (await page.$('.scene-frame')).screenshot({ path: resolve('work/office-dynamic-80.png') })
+  await page.$eval('.crew-card:last-child', element => element.click())
+  await page.waitForFunction(selector => document.querySelector(selector)?.disabled === false, {}, overview)
+  await page.click(overview)
+  await page.waitForFunction(selector => document.querySelector(selector)?.disabled === true, {}, overview)
   const renderer = await page.$eval('canvas', canvas => {
     const webgl = canvas.getContext('webgl2')
     return { webgl: Boolean(webgl), lost: webgl?.isContextLost(), width: canvas.width }
   })
-  assert.ok(renderer.webgl && !renderer.lost && renderer.width > 0, '3D renderer should survive 50 agents')
+  assert.ok(renderer.webgl && !renderer.lost && renderer.width > 0, '3D renderer should survive 80 agents')
   const all = (await api('/api/state')).agents
-  assert.equal(all.length, 50)
+  assert.equal(all.length, 80)
   await Promise.all(all.map(agent => api(`/api/agents/${agent.id}`, 'DELETE')))
   await count(0)
   await phases(0)
   await page.click('[aria-label="Agent team"]')
   await page.waitForFunction(() => document.body.textContent.includes('No agents yet'))
   assert.deepEqual(errors, [], `Browser errors: ${errors.join(' | ')}`)
-  console.log(JSON.stringify({ browser: 'passed', scenarios: [0, 1, 4, 5, 20, 50], automaticSecurityDepartment: true, manualDepartmentOverride: true, persistedEdits: true, appearancePersistence: true, overviewNavigation: true, webgl: renderer, consoleErrors: errors.length, screenshot: 'work/office-dynamic-20.png' }))
+  console.log(JSON.stringify({ browser: 'passed', scenarios: [0, 1, 4, 5, 20, 50, 80], automaticSecurityDepartment: true, manualDepartmentOverride: true, persistedEdits: true, appearancePersistence: true, overviewNavigation: true, webgl: renderer, consoleErrors: errors.length, screenshot: 'work/office-dynamic-80.png' }))
 } finally {
   if (browser) {
     const watchdog = setTimeout(() => browser.process()?.kill(), 7000)

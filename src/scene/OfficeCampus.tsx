@@ -75,9 +75,9 @@ function SectorRoom({ sector, preferences }: { sector: Sector; preferences: Offi
   </group>
 }
 
-function SharedLounge({ width, z, theme }: { width: number; z: number; theme: OfficePreferences['theme'] }) {
+function SharedLounge({ x, z, theme }: { x: number; z: number; theme: OfficePreferences['theme'] }) {
   const tabletop = theme === 'midnight' ? '#9e8a7d' : theme === 'warm' ? '#d3ab86' : '#d6c4ac'
-  return <group position={[width / 2, 0, z]}>
+  return <group position={[x, 0, z]}>
     {/* The meeting spot is outside all workstation routes and chair footprints. */}
     <RoundedBox position={[0, .72, 0]} args={[2.25, .13, .98]} radius={.11} castShadow>
       <meshStandardMaterial color={tabletop} roughness={.76}/>
@@ -91,7 +91,68 @@ function SharedLounge({ width, z, theme }: { width: number; z: number; theme: Of
       <mesh position={[0, .23, 0]}><cylinderGeometry args={[.055, .08, .45, 8]}/><meshStandardMaterial color="#677a8b"/></mesh>
     </group>)}
     <mesh position={[0, .82, 0]}><cylinderGeometry args={[.16, .16, .055, 12]}/><meshStandardMaterial color="#f6f8f8"/></mesh>
-    <Planter x={Math.min(width / 2 - .8, 3.3)} z={.55}/>
+  </group>
+}
+
+function CoffeePoint({ x, z }: { x: number; z: number }) {
+  return <group position={[x, 0, z]}>
+    <RoundedBox position={[0, .53, 0]} args={[1.35, 1.06, .7]} radius={.07} castShadow>
+      <meshStandardMaterial color="#8298a8" roughness={.76}/>
+    </RoundedBox>
+    <RoundedBox position={[0, 1.09, 0]} args={[1.48, .12, .8]} radius={.04} castShadow>
+      <meshStandardMaterial color="#d6c2a8" roughness={.73}/>
+    </RoundedBox>
+    <RoundedBox position={[-.27, 1.25, -.12]} args={[.47, .28, .3]} radius={.035}>
+      <meshStandardMaterial color="#2e455b" metalness={.25}/>
+    </RoundedBox>
+    <mesh position={[-.27, 1.38, .05]}><boxGeometry args={[.18, .025, .15]}/><meshStandardMaterial color="#b9d6df"/></mesh>
+    <mesh position={[.37, 1.17, .04]}><cylinderGeometry args={[.1, .095, .13, 12]}/><meshStandardMaterial color="#f7f1e6"/></mesh>
+  </group>
+}
+
+function FocusNook({ x, z }: { x: number; z: number }) {
+  return <group position={[x, 0, z]}>
+    <RoundedBox position={[0, .48, -.15]} args={[1.35, .14, .76]} radius={.1} castShadow>
+      <meshStandardMaterial color="#7088a3"/>
+    </RoundedBox>
+    <RoundedBox position={[0, .91, -.49]} args={[1.35, .82, .12]} radius={.1} castShadow>
+      <meshStandardMaterial color="#6b829b"/>
+    </RoundedBox>
+    {[-.56, .56].map(side => <RoundedBox key={side} position={[side, .65, -.1]} args={[.13, .35, .83]} radius={.06}>
+      <meshStandardMaterial color="#7088a3"/>
+    </RoundedBox>)}
+    <mesh position={[0, .13, -.2]}><boxGeometry args={[1.12, .22, .54]}/><meshStandardMaterial color="#53687f"/></mesh>
+    <mesh position={[0, 1.46, -.55]}><boxGeometry args={[1.62, .075, .13]}/><meshStandardMaterial color="#b8d7e0" emissive="#6e99ad" emissiveIntensity={.14}/></mesh>
+  </group>
+}
+
+// The glass facade sits on the far edges of the floor, away from the
+// viewer-facing sides. It frames the office as a real corporate storey without
+// obstructing agents or their circulation routes.
+function GlassFacade({ width, depth, theme }: { width: number; depth: number; theme: OfficePreferences['theme'] }) {
+  const dark = theme === 'midnight'
+  const frame = dark ? '#6c849f' : '#a4b7ca'
+  const glass = dark ? '#426d92' : '#a7d8ec'
+  const backPanels = Math.max(1, Math.ceil(width / 3.6))
+  const sidePanels = Math.max(1, Math.ceil(depth / 3.6))
+  return <group>
+    {Array.from({ length: backPanels }, (_, index) => {
+      const widthPer = width / backPanels
+      return <group key={`back-${index}`} position={[(index + .5) * widthPer, 0, -.38]}>
+        <mesh position={[0, 1.62, 0]}><boxGeometry args={[widthPer - .1, 2.95, .07]}/><meshStandardMaterial color={glass} transparent opacity={.22} depthWrite={false} metalness={.13} roughness={.18}/></mesh>
+        <mesh position={[-widthPer / 2, 1.65, .015]}><boxGeometry args={[.075, 3.25, .1]}/><meshStandardMaterial color={frame} metalness={.5}/></mesh>
+        <mesh position={[0, 2.15, .02]}><boxGeometry args={[widthPer, .045, .09]}/><meshStandardMaterial color={frame} metalness={.45}/></mesh>
+      </group>
+    })}
+    {Array.from({ length: sidePanels }, (_, index) => {
+      const length = depth / sidePanels
+      return <group key={`side-${index}`} position={[-.38, 0, (index + .5) * length]}>
+        <mesh position={[0, 1.62, 0]}><boxGeometry args={[.07, 2.95, length - .1]}/><meshStandardMaterial color={glass} transparent opacity={.22} depthWrite={false} roughness={.18}/></mesh>
+        <mesh position={[.015, 1.65, -length / 2]}><boxGeometry args={[.1, 3.25, .075]}/><meshStandardMaterial color={frame} metalness={.5}/></mesh>
+      </group>
+    })}
+    <mesh position={[width / 2, 3.3, -.38]}><boxGeometry args={[width + .07, .14, .16]}/><meshStandardMaterial color={frame} metalness={.4}/></mesh>
+    <mesh position={[-.38, 3.3, depth / 2]}><boxGeometry args={[.16, .14, depth + .07]}/><meshStandardMaterial color={frame} metalness={.4}/></mesh>
   </group>
 }
 
@@ -106,7 +167,12 @@ export function OfficeCampus({ layout, preferences }: { layout: OfficeLayout; pr
       <mesh position={[0, .096, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[Math.max(.35, passage.width - .45), Math.max(.35, passage.depth - .45)]}/><meshStandardMaterial color={preferences.accent} transparent opacity={.16}/></mesh>
     </group>)}
     {layout.sectors.map(sector => <SectorRoom key={sector.id} sector={sector} preferences={preferences}/>)}
-    {layout.seats.length > 1 && <SharedLounge width={layout.width} z={layout.depth - 1.73} theme={preferences.theme}/>}
+    {layout.amenities.map(amenity => amenity.id === 'meeting'
+      ? <SharedLounge key={amenity.id} x={amenity.x} z={amenity.z} theme={preferences.theme}/>
+      : amenity.id === 'coffee'
+        ? <CoffeePoint key={amenity.id} x={amenity.x} z={amenity.z}/>
+        : <FocusNook key={amenity.id} x={amenity.x} z={amenity.z}/>)}
+    <GlassFacade width={layout.width} depth={layout.depth} theme={preferences.theme}/>
     <ambientLight intensity={.47} color="#e5efff"/>
   </group>
 }

@@ -7,6 +7,7 @@ import { type AgentId, type OfficeTask } from '../types'
 import { DEPARTMENTS, useAgents } from '../agents'
 import { OfficeCampus } from './OfficeCampus'
 import { OfficeAvatar } from './OfficeAvatar'
+import { OfficeCrowdLOD } from './OfficeCrowdLOD'
 import { makeOfficeLayout, type OfficeLayout, type Seat } from './officeLayout'
 import { advanceMovement, CHAIR_Z, createMovementState, makeWalkRoute, STAND_Z } from './officeMotion'
 import { useOfficePreferences } from './OfficePreferencesContext'
@@ -86,12 +87,18 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
   useEffect(() => { movement.current = createMovementState(route) }, [route])
   const traveler = useRef<Group>(null)
   const walkRef = useRef(0)
+  const gaitRef = useRef(0)
   const seatedRef = useRef(0)
   const socialRef = useRef(false)
   useFrame((_, delta) => {
     if (!traveler.current) return
+    const previousPosition = movement.current.position
     const frame = advanceMovement(movement.current, route, delta, working, preferences.motion, ordinal)
     movement.current = frame
+    if (frame.walking) {
+      const distance = Math.hypot(frame.position[0] - previousPosition[0], frame.position[1] - previousPosition[1])
+      gaitRef.current += distance * (Math.PI * 2 / 1.2)
+    }
     const smoothing = Math.min(delta, .05)
     traveler.current.position.x = frame.position[0] - position[0]
     traveler.current.position.z = frame.position[1] - position[2]
@@ -104,14 +111,18 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
   return <group position={position}>
     <Desk color={agent.color} active={working} theme={preferences.theme} />
     <group ref={node => { traveler.current = node; if (node) avatars.current.set(agent.id, node); else avatars.current.delete(agent.id) }} position={[0, 0, STAND_Z]} rotation={[0, Math.PI, 0]}>
-      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} seatedRef={seatedRef} socialRef={socialRef}/>
+      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} gaitRef={gaitRef} seatedRef={seatedRef} socialRef={socialRef}/>
     </group>
   </group>
 }
 
-function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeats, overview, preferences }: { selected: AgentId; tasks: OfficeTask[]; onSelect: (value: AgentId) => void; now: number; overlayId: string; layout: OfficeLayout; visibleSeats: Seat[]; overview: boolean; preferences: OfficePreferences }) {
+function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeats, distantSeats, overview, preferences }: { selected: AgentId; tasks: OfficeTask[]; onSelect: (value: AgentId) => void; now: number; overlayId: string; layout: OfficeLayout; visibleSeats: Seat[]; distantSeats: Seat[]; overview: boolean; preferences: OfficePreferences }) {
   const { size } = useThree()
   const avatars = useRef(new Map<string, Group>())
+  const distantWorking = useMemo(() => new Set(distantSeats.filter(seat =>
+    ['thinking', 'coding', 'researching', 'finishing'].includes(
+      resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now),
+    )).map(seat => seat.agent.id)), [distantSeats, tasks, now])
   const center = layout.seats.find(seat => seat.agent.id === selected)?.position || layout.sectors[0]?.center || [0, 0, 0]
   const target: [number, number, number] = overview ? [layout.width / 2, 1, layout.depth / 2] : [center[0], 1, center[2]]
   // Use the actual canvas size so every room fits on screen as the campus grows.
@@ -127,6 +138,7 @@ function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeat
     <hemisphereLight args={['#aac6eb', '#293852', 1.7]} />
     <directionalLight position={[7, 14, 12]} intensity={2.4} color="#f4ecdc" />
     <OfficeCampus layout={layout} preferences={preferences}/>
+    <OfficeCrowdLOD seats={distantSeats} theme={preferences.theme} working={distantWorking} onSelect={onSelect}/>
     {visibleSeats.map(seat => <Workstation key={seat.agent.id} seat={seat} sector={layout.sectors.find(sector => sector.id === seat.sector)!} ordinal={layout.seats.filter(item => item.sector === seat.sector).findIndex(item => item.agent.id === seat.agent.id)} selected={selected === seat.agent.id} pose={resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now)} onSelect={() => onSelect(seat.agent.id)} preferences={preferences} avatars={avatars}/>)}
     <BadgeProjector overlayId={overlayId} seats={visibleSeats} sectors={layout.sectors} avatars={avatars}/>
     <OrthographicCamera key={cameraKey} makeDefault position={[target[0] + 15, target[1] + 17, target[2] + 19]} zoom={overview ? overviewZoom : 42} near={.1} far={Math.max(250, layout.width + layout.depth + 100)} />
@@ -148,6 +160,11 @@ export default function OfficeScene({ selected, tasks, onSelect, overview = fals
       return dist(a) - dist(b)
     }).slice(0, 50)
   }, [layout, selected])
+  const distantSeats = useMemo(() => {
+    if (layout.seats.length <= 50) return []
+    const close = new Set(visibleSeats.map(seat => seat.agent.id))
+    return layout.seats.filter(seat => !close.has(seat.agent.id))
+  }, [layout, visibleSeats])
   const overlayId = useId()
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -165,7 +182,7 @@ export default function OfficeScene({ selected, tasks, onSelect, overview = fals
   }, [tasks, now])
   return <div className="office-3d-shell" data-office-theme={preferences.theme} data-office-motion={preferences.motion}>
     <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true, alpha: false }} onPointerMissed={() => { }}>
-      <Studio selected={selected} tasks={tasks} onSelect={onSelect} now={now} overlayId={overlayId} layout={layout} visibleSeats={visibleSeats} overview={overview} preferences={preferences}/>
+      <Studio selected={selected} tasks={tasks} onSelect={onSelect} now={now} overlayId={overlayId} layout={layout} visibleSeats={visibleSeats} distantSeats={distantSeats} overview={overview} preferences={preferences}/>
     </Canvas>
     <div id={overlayId} className={`scene-phase-overlay${overview ? ' is-overview' : ''}`} aria-label={tr('Current phase')}>
       {visibleSeats.map(({ agent }) => {
