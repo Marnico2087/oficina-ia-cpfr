@@ -1,4 +1,6 @@
 export type AgentId = 'atlas' | 'nova' | 'pixel' | 'sentinel'
+export type ProviderId = 'codex' | 'claude' | 'gemini'
+export interface ProviderInfo { id: ProviderId; name: string; available: boolean }
 export type TaskStatus = 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export type TaskPhase = 'thinking' | 'coding' | 'researching' | 'finishing' | 'idle'
 export interface OfficeAgent {
@@ -13,6 +15,7 @@ export interface TaskEvent { id: string; at: string; kind: string; message: stri
 export interface OfficeTask {
   id: string
   agentId: AgentId
+  provider?: ProviderId
   prompt: string
   workspace: string
   status: TaskStatus
@@ -27,7 +30,7 @@ export interface OfficeTask {
   exitCode?: number | null
   usage?: { input_tokens?: number; output_tokens?: number } | null
 }
-export interface ServerState { connected: boolean; codexAvailable: boolean; defaultWorkspace: string; tasks: OfficeTask[] }
+export interface ServerState { connected: boolean; codexAvailable: boolean; providers: ProviderInfo[]; defaultWorkspace: string; tasks: OfficeTask[] }
 
 export const AGENTS: OfficeAgent[] = [
   { id: 'atlas', name: 'Atlas', role: 'Tech Lead', specialty: 'Architecture & planning', color: '#8b82ff', short: 'AT' },

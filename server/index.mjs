@@ -1,10 +1,11 @@
 import express from 'express'
 import { spawn } from 'node:child_process'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, realpathSync, statSync } from 'node:fs'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
-import { dirname, isAbsolute, join, resolve, delimiter } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { discoverProviders, foldersOverlap, launchArgs } from './providers.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
@@ -19,20 +20,7 @@ let tasks = []
 let persistTimer
 let persistChain = Promise.resolve()
 
-function findCodex() {
-  const explicit = process.env.CODEX_BIN
-  if (explicit) return existsSync(explicit) ? explicit : null
-  const dirs = (process.env.PATH || '').split(delimiter)
-  for (const folder of dirs) {
-    for (const name of (process.platform === 'win32' ? ['codex.exe'] : ['codex'])) {
-      const candidate = join(folder, name)
-      if (existsSync(candidate)) return candidate
-    }
-  }
-  return null
-}
-
-const codexBin = findCodex()
+const providers = discoverProviders()
 const app = express()
 app.disable('x-powered-by')
 app.use(express.json({ limit: '20kb' }))
@@ -55,7 +43,8 @@ const visible = task => ({ ...task })
 function snapshot() {
   return {
     connected: true,
-    codexAvailable: Boolean(codexBin),
+    codexAvailable: providers.find(provider => provider.id === 'codex').available,
+    providers: providers.map(({ id, name, available }) => ({ id, name, available })),
     defaultWorkspace: process.env.AGENT_OFFICE_WORKSPACE || ROOT,
     tasks: tasks.map(visible),
   }
@@ -86,6 +75,45 @@ function addEvent(task, message, kind = 'info') {
 
 function parseMessage(task, data) {
   if (!data || typeof data !== 'object') return
+  if (task.provider === 'claude') {
+    if (data.type === 'system' && data.session_id) task.threadId = data.session_id
+    if (data.type === 'assistant') {
+      for (const block of data.message?.content || []) {
+        if (block.type === 'tool_use') {
+          task.phase = /WebSearch|WebFetch/i.test(block.name) ? 'researching' : 'coding'
+          addEvent(task, `Claude usou ${shrink(block.name)}.`)
+        } else if (block.type === 'text' && block.text) {
+          task.lastMessage = shrink(block.text, 500)
+          addEvent(task, 'Claude respondeu: ' + shrink(block.text, 140))
+        }
+      }
+    }
+    if (data.type === 'result') {
+      if (data.result) task.lastMessage = shrink(data.result, 500)
+      if (data.usage) task.usage = data.usage
+      if (data.is_error) task.failure = shrink(data.result || 'Claude Code relatou erro.', 500)
+      task.phase = 'finishing'
+    }
+    return
+  }
+  if (task.provider === 'gemini') {
+    if (data.type === 'init') task.threadId = data.session_id || null
+    if (data.type === 'tool_use') {
+      task.phase = /search|web/i.test(data.tool_name) ? 'researching' : 'coding'
+      addEvent(task, `Gemini usou ${shrink(data.tool_name)}.`)
+    }
+    if (data.type === 'message' && data.role === 'assistant' && data.content) {
+      task.lastMessage = shrink(data.content, 500)
+      addEvent(task, 'Gemini respondeu: ' + shrink(data.content, 140))
+    }
+    if (data.type === 'error') { task.failure = shrink(data.message || 'Gemini CLI relatou erro.', 500); addEvent(task, task.failure, 'error') }
+    if (data.type === 'result') {
+      if (data.response) task.lastMessage = shrink(data.response, 500)
+      if (data.status === 'error' || data.error) task.failure = shrink(data.error?.message || 'Gemini CLI falhou.', 500)
+      task.phase = 'finishing'
+    }
+    return
+  }
   if (data.type === 'thread.started') {
     task.threadId = data.thread_id
   } else if (data.type === 'turn.started') {
@@ -126,7 +154,7 @@ async function loadHistory() {
   try {
     const value = JSON.parse(await readFile(STORE, 'utf8'))
     tasks = Array.isArray(value) ? value.slice(0, MAX_TASKS).map(task =>
-      task.status === 'running' ? { ...task, status: 'interrupted', phase: 'idle' } : task
+      task.status === 'running' ? { ...task, provider: task.provider || 'codex', status: 'interrupted', phase: 'idle' } : { ...task, provider: task.provider || 'codex' }
     ) : []
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Could not load history:', error.message)
@@ -145,34 +173,43 @@ app.get('/api/events', (req, res) => {
 })
 
 app.post('/api/tasks', (req, res) => {
-  const { prompt, agentId, workspace } = req.body || {}
-  if (!codexBin) return res.status(503).json({ error: 'Codex CLI não encontrado. Configure CODEX_BIN.' })
+  const { prompt, agentId, workspace, provider: requestedProvider = 'codex' } = req.body || {}
+  const provider = providers.find(item => item.id === requestedProvider)
+  if (!provider) return res.status(400).json({ error: 'Motor de IA desconhecido.' })
+  if (!provider.available) return res.status(503).json({ error: `${provider.name} não encontrado. Instale e autentique o CLI, depois reinicie o escritório.` })
   if (!ROLES.includes(agentId)) return res.status(400).json({ error: 'Agente desconhecido.' })
   if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > MAX_PROMPT) return res.status(400).json({ error: 'Tarefa vazia ou extensa demais.' })
   if (typeof workspace !== 'string' || workspace.length > 1000 || !isAbsolute(workspace)) return res.status(400).json({ error: 'Informe uma pasta de projeto com caminho absoluto.' })
   try {
     if (!statSync(workspace).isDirectory()) return res.status(400).json({ error: 'A pasta do projeto não é válida.' })
   } catch { return res.status(400).json({ error: 'Pasta do projeto não encontrada.' }) }
+  let canonical
+  try { canonical = realpathSync(workspace) }
+  catch { return res.status(400).json({ error: 'Não foi possível acessar a pasta do projeto.' }) }
   if ([...active.values()].some(a => a.task.agentId === agentId)) return res.status(409).json({ error: 'Esse agente já está trabalhando.' })
+  if ([...active.values()].some(a => foldersOverlap(canonical, a.canonical))) return res.status(409).json({ error: 'Já existe uma tarefa trabalhando nessa pasta (ou numa pasta dentro dela). Aguarde ou escolha outro projeto para evitar conflitos.' })
 
   const task = {
-    id: randomUUID(), agentId, prompt: prompt.trim(), workspace, status: 'running', phase: 'thinking',
+    id: randomUUID(), agentId, provider: provider.id, prompt: prompt.trim(), workspace, status: 'running', phase: 'thinking',
     createdAt: stamp(), updatedAt: stamp(), finishedAt: null, lastMessage: '', events: [], threadId: null, usage: null,
   }
   tasks.unshift(task)
   tasks = tasks.slice(0, MAX_TASKS)
-  addEvent(task, 'Tarefa enviada ao Codex CLI.')
+  addEvent(task, `Tarefa enviada ao ${provider.name}.`)
 
   // Pass the human's prompt through stdin; never interpolate it into a shell command.
-  const args = ['exec', '--json', '--skip-git-repo-check', '-s', 'workspace-write', '-C', workspace, '-']
+  const args = launchArgs(provider.id, workspace)
+  if (provider.id === 'gemini') args.splice(1, 0, task.prompt)
+  const command = provider.bin.endsWith('.js') ? process.execPath : provider.bin
+  if (provider.bin.endsWith('.js')) args.unshift(provider.bin)
   let child
-  try { child = spawn(codexBin, args, { cwd: workspace, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }) }
+  try { child = spawn(command, args, { cwd: workspace, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }) }
   catch (error) {
     task.status = 'failed'; task.failure = error.message; addEvent(task, error.message, 'error')
     return res.status(500).json({ error: error.message })
   }
 
-  active.set(task.id, { child, task })
+  active.set(task.id, { child, task, canonical })
   let buffer = ''
   let stderr = ''
   child.stdout.setEncoding('utf8')
@@ -194,11 +231,11 @@ app.post('/api/tasks', (req, res) => {
     task.status = task.status === 'cancelled' ? 'cancelled' : code === 0 && !task.failure ? 'completed' : 'failed'
     task.phase = 'idle'
     task.finishedAt = stamp()
-    if (task.status === 'failed') task.failure ||= shrink(task.events.filter(e => e.kind === 'error').at(-1)?.message || stderr || `Codex saiu com código ${code}.`, 500)
+    if (task.status === 'failed') task.failure ||= shrink(task.events.filter(e => e.kind === 'error').at(-1)?.message || stderr || `${provider.name} saiu com código ${code}.`, 500)
     addEvent(task, task.status === 'completed' ? 'Tarefa concluída.' : task.status === 'cancelled' ? 'Tarefa cancelada.' : `Falha: ${task.failure}`, task.status === 'completed' ? 'success' : 'error')
   })
   child.stdin.on('error', () => {})
-  child.stdin.end(task.prompt)
+  child.stdin.end(provider.id === 'gemini' ? '' : task.prompt)
   res.status(201).json({ task })
 })
 
@@ -212,7 +249,11 @@ app.post('/api/tasks/:id/cancel', (req, res) => {
 })
 
 await loadHistory()
+if (existsSync(join(ROOT, 'dist', 'index.html'))) {
+  app.use(express.static(join(ROOT, 'dist')))
+  app.get('/', (_req, res) => res.sendFile(join(ROOT, 'dist', 'index.html')))
+}
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`Agent Office API: http://127.0.0.1:${PORT}`)
-  console.log(`Codex CLI: ${codexBin || 'not found'}`)
+  for (const provider of providers) console.log(`${provider.name}: ${provider.available ? 'detected' : 'not found'}`)
 })

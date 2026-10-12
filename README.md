@@ -1,8 +1,8 @@
 # Agent Office 🏢
 
-**Open-source 3D mission control for local AI coding agents.** Inspect an animated office, assign Codex CLI tasks, follow execution events, and track task history. Built with React, TypeScript, React Three Fiber, Three.js, and Node/Express.
+**Open-source 3D mission control for local AI coding agents.** Inspect an animated office, assign Codex CLI, Claude Code or Gemini CLI tasks, follow execution events, and track task history. Built with React, TypeScript, React Three Fiber, Three.js, and Node/Express.
 
-> **Project status: functional prototype (v0.1).** The four avatars are visual task slots backed by separate Codex CLI executions. They do not yet share memory, delegate or form a coordinated multi-agent workflow. In Demo mode, all activity is simulated and no code is executed.
+> **Project status: functional prototype (v0.1).** The four avatars are visual task slots backed by separate CLI executions. They do not yet share memory, delegate or form a coordinated multi-agent workflow. In Demo mode, all activity is simulated and no code is executed. Codex is the most extensively tested provider; Claude Code support is experimental and Gemini CLI support has not been tested on a machine with Gemini installed.
 
 ![Agent Office 3D demo](docs/office-preview.png)
 
@@ -10,18 +10,20 @@
 
 - Node.js 20.19+ / 22.12+ (tested on Node 24) and npm.
 - A browser with WebGL enabled.
-- [Codex CLI](https://github.com/openai/codex) installed and authenticated, for real tasks.
+- At least one installed and authenticated CLI for real tasks: [Codex CLI](https://github.com/openai/codex), [Claude Code](https://code.claude.com/docs/en/quickstart), or [Gemini CLI](https://github.com/google-gemini/gemini-cli).
 
 ## Quick start
 
-Run from this folder:
+**Windows:** Download the [ZIP from GitHub](https://github.com/Munizada/agent-office/archive/refs/heads/main.zip), extract it to a normal folder, and double-click **`START-WINDOWS.cmd`**. You need Node.js installed once. The starter installs missing dependencies, builds the interface and starts it at **http://127.0.0.1:4300/** (reload the browser if it opens before the server starts). Keep the terminal open. A ZIP download does not update automatically; download a newer release or use Git.
+
+**Linux/macOS or development:** Run from this folder:
 
 ```bash
 npm ci
 npm run dev:all
 ```
 
-Open **http://127.0.0.1:5173/**. The interface starts in **Demo mode**. Switch the header to **Live mode** to launch real Codex jobs, once the status says **CODEX READY**.
+Open **http://127.0.0.1:5173/** for development. For a built production UI use `npm run build` then `npm start` and open **http://127.0.0.1:4300/**. The interface starts in **Demo mode**. To run real tasks: authenticate your CLI, select **Live mode**, create a task, choose the AI provider, assign an avatar and select an absolute project directory. Unavailable providers are disabled.
 
 If you prefer separate terminals, use:
 
@@ -35,7 +37,9 @@ And in the second terminal:
 npm run dev
 ```
 
-By default, real tasks use this project's root folder. Set a different absolute **Project directory** in Settings before launching a task against another project.
+By default, real tasks use this project's root folder. **Choose your actual project folder in Settings** before launching a task. Each task starts a new CLI process with its own prompt. The four visual avatars are task slots; they do not observe existing external chat sessions or automatically coordinate. The server rejects overlapping workspace folders while its own tasks are running.
+
+**Codex Web GPT / Codex desktop integration:** If you use [Codex Web GPT](https://github.com/miuuyy/codex-chatgpt-web), choose the same repository folder to launch a fresh independent CLI task there. The Agent Office does not connect to its tunnel, Native2 bridge, chat, or existing Codex processes. Avoid modifying the same files concurrently in the two apps; the folder conflict guard cannot detect external applications. Your Codex Web GPT configuration and authentication are never changed by setup.
 
 ### 🌐 Interface languages
 
@@ -47,6 +51,8 @@ To override CLI discovery or set the initial project directory:
 
 ```powershell
 $env:CODEX_BIN = 'C:\path\to\codex.exe'
+$env:CLAUDE_BIN = 'C:\path\to\claude.exe'
+$env:GEMINI_BIN = 'C:\path\to\gemini'
 $env:AGENT_OFFICE_WORKSPACE = 'C:\path\to\your-project'
 npm run server
 ```
@@ -54,7 +60,7 @@ npm run server
 ## What works
 
 - Rotate and zoom the 3D office; click an avatar to inspect their task. The characters react visually to their reported phases: thinking, coding, researching, finishing, or idle. A completed task triggers a brief celebration; a failed/interrupted task triggers an error reaction. Phase labels follow the interface language.
-- Launch an independent Codex CLI task per avatar, targeting an absolute local project directory.
+- Launch an independent CLI task per avatar, choosing Codex, Claude Code or Gemini per task and targeting an absolute local project directory. Provider detection is performed at API startup; restart after installation.
 - Stream command, file-change, research and progress events to the office through Server-Sent Events (SSE).
 - Inspect a selected agent's execution phase, live elapsed time, latest update, chronological event details, errors and token usage (when reported by Codex). Select a task from the feed or history to inspect that exact run.
 - Track finished jobs, latest status and task history; request cancellation.
@@ -66,10 +72,12 @@ npm run server
 | --- | --- |
 | `npm run dev` | Local front end at 127.0.0.1:5173 |
 | `npm run dev:all` | Start both front end and local API in one terminal |
-| `npm run server` | Local Codex bridge at 127.0.0.1:4300 |
+| `npm start` | Serve built UI and local API at 127.0.0.1:4300 (run `npm run build` first) |
+| `START-WINDOWS.cmd` | Windows starter: install dependencies, build, start and open browser |
+| `npm run server` | Local AI CLI bridge at 127.0.0.1:4300 |
 | `npm run build` | Type-check and production build |
 | `npm run lint` | Static code checks |
-| `npm run test:behavior` | Test the mapping from task events to 3D reactions (no Codex jobs) |
+| `npm run test:behavior` | Test agent behavior and CLI adapter / folder-safety rules without real AI jobs |
 | `npm run check:server` | Validate server syntax |
 | `npm run smoke:browser` | Smoke-test UI, visual 3D rendering and WebGL (both services running, Chrome needed) |
 | `npm run smoke:live` | **Runs real Codex jobs and consumes tokens**; tests parallel isolated file writes and API protections |
@@ -77,7 +85,9 @@ npm run server
 
 ## Safety and privacy
 
-The API listens only on `127.0.0.1:4300` and restricts browser origins. Each Codex job requests a `workspace-write` sandbox, subject to your Codex configuration and operating system policies. Assign jobs only inside trusted project folders. Running agents in the same folder may edit the same files and interfere with each other.
+The API listens only on `127.0.0.1:4300` and restricts browser origins. Each Codex job requests a `workspace-write` sandbox; Claude Code uses `acceptEdits` with noninteractive prompts denied; Gemini CLI uses `auto_edit`. These settings remain subject to your installed CLI and operating system permissions. Assign jobs only inside trusted project folders. The office blocks parallel tasks in overlapping directories **inside the office**, but cannot block jobs launched by Codex Web GPT, your editor or a second Agent Office instance.
+
+CLI detection checks whether a command is installed, **not whether you are signed in**. A missing or expired login is reported by the CLI when a real task starts. For Claude Code, reauthenticate using its normal login flow in the Claude Code app/terminal before retrying the office.
 
 `smoke:live` creates disposable test directories inside `.local/`; it runs two real Codex sessions, so it requires an authenticated CLI and can incur usage costs. Do not run it as part of an untrusted CI workflow.
 
@@ -86,9 +96,9 @@ Task prompts, statuses, phase updates, recent events (up to 35 per task) and sho
 ## Roadmap
 
 - True multi-agent planning, handoffs, coordination, shared context, and delegation.
-- Adapters for other coding agents (Claude Code, Gemini CLI) with clear permission boundaries.
+- More provider integrations and full real-world cross-platform testing for Gemini CLI and Claude Code.
 - Further character movement around the office and workspace customization.
-- Desktop distribution, setup wizard and more comprehensive live execution tests.
+- Packaged signed desktop installer and setup wizard (Windows starter is available today).
 
 ## Contributing
 

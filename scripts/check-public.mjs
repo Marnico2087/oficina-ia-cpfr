@@ -11,7 +11,7 @@ const privateData = [
   { label: 'sensitive assignment', pattern: /\b(?:api[_-]?key|client[_-]?secret|access[_-]?token|private[_-]?token|password|passwd)\s*[:=]\s*["']?[A-Za-z0-9_/+=-]{24,}["']?/i },
   { label: 'email address in public source', pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/ },
 ]
-const textTypes = new Set(['.ts','.tsx','.js','.mjs','.cjs','.json','.md','.html','.css','.svg','.txt','.yml','.yaml','.sh','.ps1','.xml','.toml'])
+const textTypes = new Set(['.ts','.tsx','.js','.mjs','.cjs','.json','.md','.html','.css','.svg','.txt','.yml','.yaml','.sh','.ps1','.cmd','.bat','.xml','.toml'])
 for (const path of paths) {
   const normalized = path.replaceAll('\\', '/')
   if (forbidden.test(normalized) && normalized !== '.env.example') errors.push(path + ': forbidden private path')

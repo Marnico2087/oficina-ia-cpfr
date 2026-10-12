@@ -2,9 +2,11 @@
 
 ## Requirements
 
-Install Node.js with npm (Node 24 recommended; minimum supported by Vite: Node 20.19+ or 22.12+), a browser supporting WebGL, and optionally the [Codex CLI](https://github.com/openai/codex) for real tasks.
+Install Node.js with npm (Node 24 recommended; minimum supported by Vite: Node 20.19+ or 22.12+), a browser supporting WebGL, and at least one coding agent CLI for real tasks (Codex, Claude Code or Gemini CLI).
 
 ### Windows (PowerShell)
+
+For non-developers, download the source ZIP, extract it, and double-click `START-WINDOWS.cmd`. The starter installs missing packages, builds and serves the finished interface at http://127.0.0.1:4300/. Close the terminal to stop the server. An extracted ZIP is not updated automatically.
 
 ```powershell
 git clone https://github.com/Munizada/agent-office.git
@@ -13,7 +15,7 @@ npm ci
 npm run dev:all
 ```
 
-Then open http://127.0.0.1:5173/ . Demo mode works without a Codex account. For real execution install/login to Codex CLI, open Settings, set an absolute workspace directory and select Live mode.
+Then open http://127.0.0.1:5173/ . Demo mode works without any AI account. For real execution install/login to your CLI, open Settings, set an absolute workspace directory and select Live mode. In the New Task dialog, select an available provider. Restart the server to refresh detection after installing a new CLI.
 
 ### Linux and macOS
 
@@ -24,7 +26,7 @@ npm ci
 npm run dev:all
 ```
 
-CLI executable discovery uses PATH. `CODEX_BIN` may point to an executable. On Windows PowerShell, for example:
+CLI executable discovery uses PATH. On Windows, `.cmd` wrappers are resolved to native or Node executables without invoking a command shell. `CODEX_BIN`, `CLAUDE_BIN` and `GEMINI_BIN` may override each executable path. On Windows PowerShell, for example:
 
 ```powershell
 $env:CODEX_BIN = 'C:\tools\codex.exe'
@@ -40,6 +42,7 @@ These are optional **process environment variables**, not an automatically loade
 | Command | Purpose |
 | --- | --- |
 | `npm run dev:all` | Local API + UI in one terminal |
+| `npm start` | Serve the built UI and API together on localhost:4300 after `npm run build` |
 | `npm run dev` | UI only |
 | `npm run server` | API only |
 | `npm run lint` | Source checks |
@@ -65,7 +68,8 @@ A failed check must be fixed before pushing. Never use `--no-verify` to bypass s
 
 - **Blank 3D scene**: enable WebGL/hardware acceleration, update browser/GPU drivers, test Chrome.
 - **API offline**: run `npm run dev:all` and check port 4300 is unused.
-- **Codex missing**: install/login to Codex CLI, ensure `codex` is on PATH or set `CODEX_BIN`, and restart the API.
+- **CLI missing**: install/login to the selected CLI, ensure it is on PATH or set its matching `_BIN` environment variable, and restart the API.
+- **Codex Web GPT**: selecting its repository folder creates fresh independent tasks; it does not mirror existing Codex Web GPT conversations. Avoid simultaneous edits through both apps.
 - **Task fails to start**: check absolute workspace path, write permissions, CLI configuration and the error shown in Activity.
 - **Port occupied**: stop the previous Agent Office API/web instance before starting another.
 - **Tasks missing after restart**: inspect `.local/tasks.json`; it is local-only and excluded from Git.

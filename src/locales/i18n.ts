@@ -168,7 +168,13 @@ Error details
 Started
 Finished
 Input tokens
-Output tokens`.split('\n')
+Output tokens
+AI provider
+Runs locally with selected CLI
+One task per project folder
+Choose the CLI used for each task.
+Start API and install an AI CLI
+The API runs on your computer. Tasks use your installed AI CLI. Recent activity stays in .local/tasks.json.`.split('\n')
 
 export const languages = [
   { code: 'pt-BR', name: 'Português (Brasil)' },

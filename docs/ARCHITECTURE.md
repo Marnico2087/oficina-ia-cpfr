@@ -1,6 +1,6 @@
 # Architecture
 
-Agent Office is a local web interface for observing and starting Codex CLI coding tasks.
+Agent Office is a local web interface for starting and observing local coding-agent CLI tasks.
 
 ```text
 Browser (127.0.0.1:5173)
@@ -12,20 +12,20 @@ Browser (127.0.0.1:5173)
             │ REST / Server-Sent Events
             ▼
 Local Express API (127.0.0.1:4300)
-   ├─ reads Codex CLI availability
+   ├─ discovers Codex CLI, Claude Code and Gemini CLI at startup
    ├─ starts/cancels local CLI subprocesses
    ├─ streams task status and progress events
    └─ writes private .local/tasks.json (ignored)
             │
             ▼
-Codex CLI → filesystem inside the selected project directory
+Selected CLI → filesystem inside the selected project directory
 ```
 
 ## Modes and data
 
 Demo mode creates simulated tasks in browser memory. Live mode asks the local API to launch independently managed CLI jobs. The four avatars are task slots, not a coordinated agent swarm. No agent-to-agent communication or shared memory is currently implemented.
 
-The API is local-only, unauthenticated, and restricted to loopback host/origins. It **must not be published or proxied to the internet or a LAN**. Real CLI jobs can change files in the selected workspace. Two jobs targeting the same directory may conflict.
+The API is local-only, unauthenticated, and restricted to loopback host/origins. It **must not be published or proxied to the internet or a LAN**. Real CLI jobs can change files in the selected workspace. The API rejects concurrent office tasks targeting the same or nested workspace; it cannot detect writes by other apps or instances.
 
 The Studio execution inspector reuses task data from the same SSE snapshots. Its timeline shows the last 35 server-recorded events per task in newest-first order; phase, elapsed time, error details and token usage are derived from those snapshots. The elapsed clock runs in the browser while a task is active, and stops after the task finishes. Selecting an avatar shows its running task or most recent task; selecting a task tile/history entry inspects that specific execution. Demo events are simulated.
 
@@ -46,7 +46,9 @@ The studio loads the 3D renderer on demand. Production builds split the Three.js
 | `src/locales/` | Translations, locale metadata and language provider |
 | `src/types.ts` | Agent and task data models |
 | `src/index.css` | Styling and responsive layout |
-| `server/index.mjs` | Local Express API and Codex process control |
+| `server/index.mjs` | Local Express API, event parser, file history and CLI process control |
+| `server/providers.mjs` | CLI adapters, binary discovery and folder overlap checking |
+| `START-WINDOWS.cmd` | One-click Windows startup and first-run dependency installation |
 | `scripts/` | Dev launcher, translation generator, validation and smoke tests |
 | `public/` | Static assets |
 | `docs/` | Documentation and reference screenshot |
@@ -58,4 +60,4 @@ The API accepts a local workspace path and starts a tool with code-execution cap
 
 ## Known limitations
 
-3D rendering depends on WebGL/GPU/browser drivers, and the first visit still downloads the 3D engine. Automatic translations can require correction by native speakers. Real Codex execution requires your own CLI authentication and follows its separate usage/approval policies.
+3D rendering depends on WebGL/GPU/browser drivers, and the first visit still downloads the 3D engine. Automatic translations can require correction by native speakers. Real execution requires CLI authentication and follows its separate usage/approval policies. The integration launches fresh CLI processes; existing chats in Codex, Claude, Gemini or Codex Web GPT are not tracked. Gemini and Claude compatibility can vary with CLI updates.

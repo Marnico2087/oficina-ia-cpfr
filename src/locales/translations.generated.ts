@@ -166,7 +166,13 @@ export const languagePacks: Record<string, string[]> = {
     "Iniciado",
     "Finalizado",
     "Tokens de entrada",
-    "Tokens de saída"
+    "Tokens de saída",
+    "Provedor de IA",
+    "Executa localmente com o CLI selecionado",
+    "Uma tarefa por pasta de projeto",
+    "Escolha o CLI usado em cada tarefa.",
+    "Inicie a API e instale um CLI de IA",
+    "A API roda no seu computador. As tarefas usam seu CLI de IA instalado. As atividades recentes ficam em .local/tasks.json."
   ],
   "pt-PT": [
     "CONTROLE DA MISSÃO",
@@ -334,7 +340,13 @@ export const languagePacks: Record<string, string[]> = {
     "Iniciado",
     "Terminado",
     "Tokens de entrada",
-    "Tokens de saída"
+    "Tokens de saída",
+    "Fornecedor de IA",
+    "Executa localmente com o CLI selecionado",
+    "Uma tarefa por pasta do projeto",
+    "Escolha o CLI usado em cada tarefa.",
+    "Inicie a API e instale um CLI de IA",
+    "A API funciona no seu computador. As tarefas usam o CLI de IA instalado. A atividade recente fica em .local/tasks.json."
   ],
   "es": [
     "CONTROL DE MISIÓN",
@@ -502,7 +514,13 @@ export const languagePacks: Record<string, string[]> = {
     "Iniciado",
     "Finalizado",
     "Tokens de entrada",
-    "Tokens de salida"
+    "Tokens de salida",
+    "Proveedor de IA",
+    "Se ejecuta localmente con la CLI seleccionada",
+    "Una tarea por carpeta de proyecto",
+    "Elige la CLI utilizada para cada tarea.",
+    "Inicia la API e instala una CLI de IA",
+    "La API se ejecuta en tu ordenador. Las tareas usan tu CLI de IA instalada. La actividad reciente se guarda en .local/tasks.json."
   ],
   "fr": [
     "CONTRÔLE DE MISSION",
@@ -670,7 +688,13 @@ export const languagePacks: Record<string, string[]> = {
     "Démarré",
     "Terminé",
     "Jetons d’entrée",
-    "Jetons de sortie"
+    "Jetons de sortie",
+    "Fournisseur d'IA",
+    "Exécution locale avec la CLI sélectionnée",
+    "Une tâche par dossier de projet",
+    "Choisissez la CLI utilisée pour chaque tâche.",
+    "Démarrez l'API et installez une CLI d'IA",
+    "L'API fonctionne sur votre ordinateur. Les tâches utilisent votre CLI d'IA installée. L'activité récente reste dans .local/tasks.json."
   ],
   "de": [
     "MISSIONSKONTROLLE",
@@ -838,7 +862,13 @@ export const languagePacks: Record<string, string[]> = {
     "Gestartet",
     "Beendet",
     "Eingabetoken",
-    "Ausgabetoken"
+    "Ausgabetoken",
+    "KI-Anbieter",
+    "Wird lokal mit der ausgewählten CLI ausgeführt",
+    "Eine Aufgabe pro Projektordner",
+    "Wähle die CLI für jede Aufgabe.",
+    "Starte die API und installiere eine KI-CLI",
+    "Die API läuft auf deinem Computer. Aufgaben verwenden deine installierte KI-CLI. Letzte Aktivitäten bleiben in .local/tasks.json."
   ],
   "it": [
     "CONTROLLO DELLA MISSIONE",
@@ -1006,7 +1036,13 @@ export const languagePacks: Record<string, string[]> = {
     "Avviato",
     "Terminato",
     "Token di input",
-    "Token di output"
+    "Token di output",
+    "Fornitore IA",
+    "Esegue localmente con la CLI selezionata",
+    "Un'attività per cartella di progetto",
+    "Scegli la CLI usata per ogni attività.",
+    "Avvia l'API e installa una CLI IA",
+    "L'API viene eseguita sul tuo computer. Le attività usano la CLI IA installata. L'attività recente rimane in .local/tasks.json."
   ],
   "nl": [
     "MISSIE CONTROLE",
@@ -1174,7 +1210,13 @@ export const languagePacks: Record<string, string[]> = {
     "Gestart",
     "Afgerond",
     "Invoertokens",
-    "Uitvoertokens"
+    "Uitvoertokens",
+    "AI-provider",
+    "Draait lokaal met de geselecteerde CLI",
+    "Eén taak per projectmap",
+    "Kies de CLI voor elke taak.",
+    "Start de API en installeer een AI-CLI",
+    "De API draait op je computer. Taken gebruiken je geïnstalleerde AI-CLI. Recente activiteit blijft in .local/tasks.json."
   ],
   "pl": [
     "KONTROLA MISJI",
@@ -1342,7 +1384,13 @@ export const languagePacks: Record<string, string[]> = {
     "Rozpoczęto",
     "Zakończono",
     "Tokeny wejściowe",
-    "Tokeny wyjściowe"
+    "Tokeny wyjściowe",
+    "Dostawca AI",
+    "Działa lokalnie z wybranym CLI",
+    "Jedno zadanie na folder projektu",
+    "Wybierz CLI dla każdego zadania.",
+    "Uruchom API i zainstaluj CLI AI",
+    "API działa na Twoim komputerze. Zadania korzystają z zainstalowanego CLI AI. Ostatnia aktywność jest zapisywana w .local/tasks.json."
   ],
   "ru": [
     "УПРАВЛЕНИЕ МИССИЯМИ",
@@ -1510,7 +1558,13 @@ export const languagePacks: Record<string, string[]> = {
     "Начато",
     "Завершено",
     "Входные токены",
-    "Выходные токены"
+    "Выходные токены",
+    "Провайдер ИИ",
+    "Локальный запуск через выбранный CLI",
+    "Одна задача на папку проекта",
+    "Выберите CLI для каждой задачи.",
+    "Запустите API и установите CLI для ИИ",
+    "API работает на вашем компьютере. Задачи используют установленный CLI для ИИ. Последние события сохраняются в .local/tasks.json."
   ],
   "uk": [
     "КОНТРОЛЬ МІСІЇ",
@@ -1678,7 +1732,13 @@ export const languagePacks: Record<string, string[]> = {
     "Розпочато",
     "Завершено",
     "Вхідні токени",
-    "Вихідні токени"
+    "Вихідні токени",
+    "Постачальник ШІ",
+    "Локальний запуск через вибраний CLI",
+    "Одне завдання на папку проєкту",
+    "Виберіть CLI для кожного завдання.",
+    "Запустіть API та встановіть CLI для ШІ",
+    "API працює на вашому комп'ютері. Завдання використовують встановлений CLI для ШІ. Останні події зберігаються в .local/tasks.json."
   ],
   "tr": [
     "GÖREV KONTROL",
@@ -1846,7 +1906,13 @@ export const languagePacks: Record<string, string[]> = {
     "Başladı",
     "Bitti",
     "Giriş tokenleri",
-    "Çıkış tokenleri"
+    "Çıkış tokenleri",
+    "Yapay zekâ sağlayıcısı",
+    "Seçilen CLI ile yerel olarak çalışır",
+    "Proje klasörü başına bir görev",
+    "Her görev için kullanılacak CLI aracını seçin.",
+    "API'yi başlatın ve bir yapay zekâ CLI aracı kurun",
+    "API bilgisayarınızda çalışır. Görevler yüklü yapay zekâ CLI aracını kullanır. Son etkinlik .local/tasks.json içinde kalır."
   ],
   "ar": [
     "التحكم في المهمة",
@@ -2014,7 +2080,13 @@ export const languagePacks: Record<string, string[]> = {
     "بدأ",
     "انتهى",
     "رموز الإدخال",
-    "رموز الإخراج"
+    "رموز الإخراج",
+    "موفر الذكاء الاصطناعي",
+    "يعمل محليًا باستخدام واجهة الأوامر المحددة",
+    "مهمة واحدة لكل مجلد مشروع",
+    "اختر واجهة الأوامر لكل مهمة.",
+    "شغّل واجهة API وثبّت أداة أوامر للذكاء الاصطناعي",
+    "تعمل واجهة API على جهازك. تستخدم المهام أداة الذكاء الاصطناعي المثبتة. يُحفظ النشاط الأخير في .local/tasks.json."
   ],
   "hi": [
     "मिशन नियंत्रण",
@@ -2182,7 +2254,13 @@ export const languagePacks: Record<string, string[]> = {
     "शुरू हुआ",
     "समाप्त हुआ",
     "इनपुट टोकन",
-    "आउटपुट टोकन"
+    "आउटपुट टोकन",
+    "एआई प्रदाता",
+    "चुने गए CLI से स्थानीय रूप से चलता है",
+    "प्रत्येक प्रोजेक्ट फ़ोल्डर में एक कार्य",
+    "हर कार्य के लिए CLI चुनें।",
+    "API शुरू करें और AI CLI इंस्टॉल करें",
+    "API आपके कंप्यूटर पर चलती है। कार्य इंस्टॉल किए गए AI CLI का उपयोग करते हैं। हाल की गतिविधि .local/tasks.json में रहती है।"
   ],
   "zh-CN": [
     "任务控制",
@@ -2350,7 +2428,13 @@ export const languagePacks: Record<string, string[]> = {
     "开始",
     "结束",
     "输入令牌",
-    "输出令牌"
+    "输出令牌",
+    "AI 提供方",
+    "使用所选 CLI 在本地运行",
+    "每个项目文件夹同时执行一项任务",
+    "为每项任务选择 CLI。",
+    "启动 API 并安装 AI CLI",
+    "API 在你的电脑上运行。任务使用已安装的 AI CLI。最近的活动保存在 .local/tasks.json。"
   ],
   "zh-TW": [
     "任務控制",
@@ -2518,7 +2602,13 @@ export const languagePacks: Record<string, string[]> = {
     "開始",
     "結束",
     "輸入權杖",
-    "輸出權杖"
+    "輸出權杖",
+    "AI 供應商",
+    "使用選取的 CLI 在本機執行",
+    "每個專案資料夾同時執行一項工作",
+    "為每項工作選擇 CLI。",
+    "啟動 API 並安裝 AI CLI",
+    "API 在你的電腦上執行。工作使用已安裝的 AI CLI。最近的活動保存在 .local/tasks.json。"
   ],
   "ja": [
     "ミッションコントロール",
@@ -2686,7 +2776,13 @@ export const languagePacks: Record<string, string[]> = {
     "開始",
     "終了",
     "入力トークン",
-    "出力トークン"
+    "出力トークン",
+    "AI プロバイダー",
+    "選択した CLI でローカル実行",
+    "プロジェクトフォルダーごとに1件のタスク",
+    "各タスクで使う CLI を選択してください。",
+    "API を起動し、AI CLI をインストールしてください",
+    "API はお使いの PC で動作します。タスクはインストール済みの AI CLI を使います。最近の操作履歴は .local/tasks.json に保存されます。"
   ],
   "ko": [
     "임무 통제",
@@ -2854,7 +2950,13 @@ export const languagePacks: Record<string, string[]> = {
     "시작",
     "종료",
     "입력 토큰",
-    "출력 토큰"
+    "출력 토큰",
+    "AI 제공자",
+    "선택한 CLI로 로컬 실행",
+    "프로젝트 폴더당 작업 1개",
+    "각 작업에 사용할 CLI를 선택하세요.",
+    "API를 시작하고 AI CLI를 설치하세요",
+    "API는 사용자 컴퓨터에서 실행됩니다. 작업은 설치된 AI CLI를 사용하며, 최근 활동은 .local/tasks.json에 저장됩니다."
   ],
   "id": [
     "KONTROL MISI",
@@ -3022,7 +3124,13 @@ export const languagePacks: Record<string, string[]> = {
     "Dimulai",
     "Selesai",
     "Token masukan",
-    "Token keluaran"
+    "Token keluaran",
+    "Penyedia AI",
+    "Berjalan secara lokal dengan CLI terpilih",
+    "Satu tugas per folder proyek",
+    "Pilih CLI untuk setiap tugas.",
+    "Jalankan API dan instal CLI AI",
+    "API berjalan di komputer Anda. Tugas memakai CLI AI yang terpasang. Aktivitas terbaru tersimpan di .local/tasks.json."
   ],
   "vi": [
     "KIỂM SOÁT SỨ MỆNH",
@@ -3190,6 +3298,12 @@ export const languagePacks: Record<string, string[]> = {
     "Đã bắt đầu",
     "Đã kết thúc",
     "Token đầu vào",
-    "Token đầu ra"
+    "Token đầu ra",
+    "Nhà cung cấp AI",
+    "Chạy cục bộ bằng CLI đã chọn",
+    "Một tác vụ cho mỗi thư mục dự án",
+    "Chọn CLI dùng cho từng tác vụ.",
+    "Khởi động API và cài đặt CLI AI",
+    "API chạy trên máy tính của bạn. Tác vụ dùng CLI AI đã cài đặt. Hoạt động gần đây được lưu trong .local/tasks.json."
   ]
 }
