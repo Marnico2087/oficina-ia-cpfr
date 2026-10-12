@@ -4,7 +4,7 @@ Shows your local [Agent Office](https://github.com/Munizada/agent-office) in a V
 
 ## Install
 
-1. Install Node.js and the CLI: `npm install -g github:Munizada/agent-office`.
+1. Install Node.js and the prebuilt CLI: `npm install -g https://github.com/Munizada/agent-office/releases/latest/download/agent-office.tgz`.
 2. Install the `.vsix` extension distributed in GitHub Releases using **Extensions → … → Install from VSIX** or `code --install-extension agent-office-vscode.vsix`.
 3. Open a project directory in VS Code.
 4. Use **Ctrl+Shift+P → Agent Office: Open 3D Office**.

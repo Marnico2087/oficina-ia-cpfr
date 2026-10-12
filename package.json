@@ -1,7 +1,7 @@
 {
   "name": "agent-office",
   "private": false,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A live 3D mission control for coding agents",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "prepare": "npm run build",
+    "prepack": "npm run build",
     "dev": "vite --host 127.0.0.1",
     "dev:all": "node scripts/dev.mjs",
     "server": "node server/index.mjs",

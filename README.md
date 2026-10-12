@@ -17,7 +17,7 @@
 **Install once** (Windows, Linux or macOS):
 
 ```bash
-npm install -g github:Munizada/agent-office
+npm install -g https://github.com/Munizada/agent-office/releases/latest/download/agent-office.tgz
 ```
 
 Then, in **any project folder**, run:
@@ -26,7 +26,7 @@ Then, in **any project folder**, run:
 agent-office
 ```
 
-The office opens at **http://127.0.0.1:4300/** and uses the terminal's current folder as its default workspace. Keep the terminal open while using it (Ctrl+C stops the office). For PowerShell installations where `npm` is blocked by script policy, use `npm.cmd install -g github:Munizada/agent-office`. You need Node.js and npm installed. To update later, run the same install command again.
+The office opens at **http://127.0.0.1:4300/** and uses the terminal's current folder as its default workspace. Keep the terminal open while using it (Ctrl+C stops the office). On PowerShell, if `npm` is blocked by script policy, substitute `npm.cmd` in the install command. You need Node.js and npm installed. Re-run the same command to update to the latest prebuilt GitHub release. Installing the release archive avoids requiring TypeScript or other development tools on the user's machine.
 
 Options: `agent-office --no-open` (start without opening your browser), `agent-office --port 4400` (use a different port), or `agent-office --workspace /path/to/project` (select another project directory). For VS Code's integrated terminal, `agent-office` also works directly.
 

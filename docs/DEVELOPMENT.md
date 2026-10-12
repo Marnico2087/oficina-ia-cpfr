@@ -6,7 +6,7 @@ Install Node.js with npm (Node 24 recommended; minimum supported by Vite: Node 2
 
 ### Windows (PowerShell)
 
-For normal use on Windows, Linux or macOS, install the CLI once with `npm install -g github:Munizada/agent-office` (PowerShell alternative: `npm.cmd install -g github:Munizada/agent-office`). Run `agent-office` inside the directory of any project. Re-run the install command to update. The old `START-WINDOWS.cmd` remains as a legacy alternative.
+For normal use on Windows, Linux or macOS, install the prebuilt CLI from GitHub Releases with `npm install -g https://github.com/Munizada/agent-office/releases/latest/download/agent-office.tgz`. On PowerShell, substitute `npm.cmd` if `.ps1` execution is blocked. Run `agent-office` inside the directory of any project. Re-run the install command to update. The old `START-WINDOWS.cmd` remains as a legacy alternative. GitHub source installs via `npm install -g github:Munizada/agent-office` are not recommended: they attempt to build the UI during installation and can fail if development executables are missing.
 
 For IDE use, install the companion `.vsix` distributed in GitHub Releases (or built using `npm run package:vscode`). In VS Code run **Agent Office: Open 3D Office** from the Command Palette after opening a project folder. The extension launches the CLI with that workspace on a free loopback port and shows the UI in a Simple Browser editor tab. More details: `vscode-extension/README.md`.
 

@@ -46,7 +46,7 @@ export async function main(args = process.argv.slice(2)) {
   }
   if (options.version) { console.log(version); return }
   if (!existsSync(join(root, 'dist', 'index.html'))) {
-    console.error('Agent Office: UI build is missing. Reinstall using npm install -g github:Munizada/agent-office.')
+    console.error('Agent Office: UI build is missing. Reinstall the latest prebuilt package from GitHub Releases.')
     process.exitCode = 1
     return
   }
