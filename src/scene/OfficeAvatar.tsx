@@ -20,9 +20,9 @@ function fitBone(mesh: Mesh | undefined, start: RigPoint, end: RigPoint) {
   mesh.scale.y = length
 }
 
-export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef, seatedRef }: {
+export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef, seatedRef, coffeeRef }: {
   agent: OfficeAgent; pose: AgentPose; selected: boolean; onSelect: () => void
-  walkRef: RefObject<number>; gaitRef: RefObject<number>; seatedRef: RefObject<number>
+  walkRef: RefObject<number>; gaitRef: RefObject<number>; seatedRef: RefObject<number>; coffeeRef: RefObject<boolean>
 }) {
   const model = useRef<Group>(null)
   const torso = useRef<Group>(null)
@@ -36,6 +36,8 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
   const knees = useRef<Mesh[]>([])
   const shoes = useRef<Mesh[]>([])
   const halo = useRef<Mesh>(null)
+  const coffeeCup = useRef<Group>(null)
+  const coffeeBlend = useRef(0)
   const thinkingBlend = useRef(0)
   const walkBlend = useRef(0)
   const skin = agent.id === 'sentinel' ? '#c48c70' : agent.id === 'pixel' ? '#efc8ab' : '#dbad8c'
@@ -45,7 +47,9 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
     const t = clock.elapsedTime
     thinkingBlend.current = MathUtils.damp(thinkingBlend.current, pose === 'thinking' ? 1 : 0, 4, Math.min(delta, .05))
     walkBlend.current = MathUtils.damp(walkBlend.current, walkRef.current, 8, Math.min(delta, .05))
-    const rig = makeAvatarRigPose(seatedRef.current, walkBlend.current, t, pose, thinkingBlend.current, gaitRef.current)
+    coffeeBlend.current = MathUtils.damp(coffeeBlend.current, coffeeRef.current ? 1 : 0, 5, Math.min(delta, .05))
+    if (coffeeCup.current) coffeeCup.current.visible = coffeeBlend.current > .2
+    const rig = makeAvatarRigPose(seatedRef.current, walkBlend.current, t, pose, thinkingBlend.current, gaitRef.current, coffeeBlend.current)
     if (model.current) model.current.position.y = rig.bob + (pose === 'celebrating' && seatedRef.current < .01 ? Math.abs(Math.sin(t * 5)) * .035 : 0)
     if (torso.current) {
       torso.current.position.y = -rig.torsoDrop
@@ -127,6 +131,17 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
             args={[.058, .061, .085]} radius={.025} castShadow>
             <meshStandardMaterial color={skin} roughness={.86}/>
           </RoundedBox>
+          {side === 1 && <group ref={coffeeCup} visible={false} position={[0, .065, .16]}>
+            <mesh castShadow>
+              <cylinderGeometry args={[.056, .046, .14, 14]}/><meshStandardMaterial color="#f7f1e6" roughness={.46}/>
+            </mesh>
+            <mesh position={[0, .066, 0]}>
+              <cylinderGeometry args={[.047, .047, .006, 14]}/><meshStandardMaterial color="#75503d" roughness={.42}/>
+            </mesh>
+            <mesh position={[.06, .006, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <torusGeometry args={[.037, .009, 7, 14]}/><meshStandardMaterial color="#eee7dc" roughness={.5}/>
+            </mesh>
+          </group>}
         </group>
       </group>)}
       {[-1, 1].map((side, index) => <group key={`leg-${side}`}>

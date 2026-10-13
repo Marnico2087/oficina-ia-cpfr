@@ -19,7 +19,7 @@ These repositories inform design reviews; Agent Office keeps its own code, visua
 ## Decisions applied here
 
 - API task snapshots remain the source of truth for running, completed and failed work. Demo activity is clearly marked as a preview.
-- Ambient walking and resting describe presentation behavior only. The renderer must not label these states as conversations, collaboration or real task progress.
+- Idle coffee breaks and walking describe presentation behavior only. The renderer must not label these states as conversations, collaboration or real task progress.
 - The current local CLI integrations start independent jobs; they are not a coordinated agent swarm. Actual meetings or agent-to-agent chat require recorded backend events before characters can portray them.
 - Keep deterministic walk routes and collision/layout checks in the application; adopt navigation ideas only when they fit the current room geometry and tests.
 - Keep provider-specific event readers behind adapters. Claude hooks, Codex CLI output and other provider events must not be assumed interchangeable.

@@ -94,22 +94,27 @@ function makeTeam(count) {
   }, `agent-${index}`))
 }
 
+function routeFor(layout, seat, ordinal) {
+  const station = layout.amenities.find(amenity => amenity.id === 'coffee')
+  const aisleZ = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2)) + .3
+  const coffee = station ? { x: station.x, z: station.z, aisleZ } : undefined
+  const sector = layout.sectors.find(item => item.id === seat.sector)
+  return makeWalkRoute(seat, sector, ordinal, coffee)
+}
+
 for (const spacing of ['compact', 'regular', 'spacious']) {
   test(`${spacing} modular layout includes connected corridors and valid agent paths`, () => {
     const layout = makeOfficeLayout(makeTeam(90), spacing)
     assert.ok(layout.passages.length > 0)
     assert.equal(layout.seats.length, 90)
     for (const seat of layout.seats) {
-      const sector = layout.sectors.find(area => area.id === seat.sector)
       const ordinal = layout.seats.filter(item => item.sector === seat.sector).indexOf(seat)
-      const route = makeWalkRoute(seat, sector, ordinal)
+      const route = routeFor(layout, seat, ordinal)
       for (const phase of [0, 3, 5, 10, 20, 50, 150]) {
         const state = walkAt(route, phase, 'lively')
         assert.ok(Number.isFinite(state.position[0]) && Number.isFinite(state.position[1]))
-        assert.ok(state.position[0] >= sector.center[0] - sector.width / 2)
-        assert.ok(state.position[0] <= sector.center[0] + sector.width / 2)
-        assert.ok(state.position[1] >= sector.center[2] - sector.depth / 2)
-        assert.ok(state.position[1] <= sector.center[2] + sector.depth / 2 + 1.3)
+        assert.ok(state.position[0] >= 0 && state.position[0] <= layout.width, 'route leaves the office width')
+        assert.ok(state.position[1] >= 0 && state.position[1] <= layout.depth, 'route leaves the office depth')
       }
       assert.deepEqual(walkAt(route, 12, 'off').position, [seat.position[0] + STAND_SIDE_X, seat.position[2] + STAND_Z])
     }
@@ -121,9 +126,8 @@ test('walking paths stay outside workstation and chair footprints across multipl
     for (const spacing of ['compact', 'regular', 'spacious']) {
       const layout = makeOfficeLayout(makeTeam(count), spacing)
       for (const seat of layout.seats) {
-        const sector = layout.sectors.find(item => item.id === seat.sector)
         const ordinal = layout.seats.filter(item => item.sector === seat.sector).indexOf(seat)
-        const route = makeWalkRoute(seat, sector, ordinal)
+        const route = routeFor(layout, seat, ordinal)
         for (let segment = 0; segment < route.points.length - 1; segment++) {
           const [ax, az] = route.points[segment], [bx, bz] = route.points[segment + 1]
           // Sample the entire segment, not only the endpoints (diagonal cuts
@@ -131,7 +135,7 @@ test('walking paths stay outside workstation and chair footprints across multipl
           for (let sample = 0; sample <= 12; sample++) {
             const t = sample / 12
             const px = ax + (bx - ax) * t, pz = az + (bz - az) * t
-            for (const other of layout.seats.filter(item => item.sector === seat.sector)) {
+            for (const other of layout.seats) {
               const dx = Math.abs(px - other.position[0]), dz = pz - other.position[2]
               assert.ok(!(dx < 1.35 && dz > -.98 && dz < .55), `desk collision at ${count}/${spacing}/${seat.agent.id}`)
               assert.ok(!(dx < .55 && dz > .65 && dz < 1.67), `chair collision at ${count}/${spacing}/${seat.agent.id}`)
@@ -148,19 +152,22 @@ test('compact floor retains clear chair approaches, back-row walkways and scaled
     for (const spacing of ['compact', 'regular', 'spacious']) {
       const layout = makeOfficeLayout(makeTeam(count), spacing)
       const farthestBayEdge = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2))
-      const expected = count < 3 ? [] : count < 9 ? ['meeting'] : count < 25 ? ['meeting', 'coffee'] : ['meeting', 'coffee', 'focus']
+      const expected = count === 0 ? [] : count < 3 ? ['coffee'] : count < 25 ? ['meeting', 'coffee'] : ['meeting', 'coffee', 'focus']
       assert.deepEqual(layout.amenities.map(amenity => amenity.id), expected)
       if (layout.amenities.length) {
-        assert.ok(layout.amenities[0].z - .55 - farthestBayEdge > .6, 'meeting table overlaps a team bay')
+        const meeting = layout.amenities.find(amenity => amenity.id === 'meeting')
+        if (meeting) assert.ok(meeting.z - .55 - farthestBayEdge > .6, 'meeting table overlaps a team bay')
+        const coffee = layout.amenities.find(amenity => amenity.id === 'coffee')
+        if (coffee) assert.ok(coffee.z + .82 < layout.depth, 'coffee stop leaves the office floor')
         for (const amenity of layout.amenities) {
           assert.ok(amenity.x > 0 && amenity.x < layout.width)
           assert.ok(amenity.z < layout.depth)
         }
-      } else assert.ok(layout.depth - farthestBayEdge < 1.5, 'solo floor has an unused lounge strip')
+      } else assert.ok(layout.depth - farthestBayEdge < 1.5, 'empty floor has an unused lounge strip')
       for (const seat of layout.seats) {
         const sector = layout.sectors.find(item => item.id === seat.sector)
         const ordinal = layout.seats.filter(item => item.sector === seat.sector).indexOf(seat)
-        const route = makeWalkRoute(seat, sector, ordinal)
+        const route = routeFor(layout, seat, ordinal)
         const bayEnd = sector.center[2] + sector.depth / 2
         assert.ok(bayEnd - route.points[3][1] > .75, 'rear route leaves the team bay')
         assert.ok(route.points[3][1] - (seat.position[2] + CHAIR_Z + .55) > .6,
@@ -188,10 +195,10 @@ test('small department bays expand only to fit occupied desk columns', () => {
 test('work transitions return along walkways, sit at the monitor and rise coherently', () => {
   const layout = makeOfficeLayout(makeTeam(4))
   const seat = layout.seats[0]
-  const route = makeWalkRoute(seat, layout.sectors.find(item => item.id === seat.sector), 0)
+  const route = routeFor(layout, seat, 0)
   let state = createMovementState(route)
-  for (let i = 0; i < 300; i++) state = advanceMovement(state, route, .05, false, 'lively', 0)
-  assert.equal(state.stage, 'walking')
+  for (let i = 0; i < 1000 && state.stage !== 'coffee'; i++) state = advanceMovement(state, route, .05, false, 'lively', 0)
+  assert.equal(state.stage, 'coffee')
   let sawReturn = false, sawSit = false, sawApproach = false
   for (let i = 0; i < 900 && state.stage !== 'working'; i++) {
     state = advanceMovement(state, route, .05, true, 'lively', 0)
@@ -223,24 +230,25 @@ test('work transitions return along walkways, sit at the monitor and rise cohere
   assert.deepEqual(state.position, route.points[0])
 })
 
-test('ambient idle walks pause without claiming a conversation or producing social gestures', () => {
+test('idle agents take a visible coffee break without claiming a conversation or real work', () => {
   const layout = makeOfficeLayout(makeTeam(2))
   const seat = layout.seats[0]
-  const sector = layout.sectors.find(item => item.id === seat.sector)
-  const route = makeWalkRoute(seat, sector, 0)
+  const route = routeFor(layout, seat, 0)
   let state = createMovementState(route)
   let sawPause = false
   for (let i = 0; i < 4000; i++) {
     state = advanceMovement(state, route, .05, false, 'lively', 0)
     assert.notEqual(state.stage, 'chatting', 'idle movement must not enter a conversation stage')
-    sawPause ||= state.stage === 'resting'
+    sawPause ||= state.stage === 'coffee'
   }
-  assert.equal(sawPause, true, 'the shared-space walk should include a neutral rest pause')
+  assert.equal(sawPause, true, 'the shared-space walk should include a coffee break')
+  const sipping = makeAvatarRigPose(0, false, 2, 'idle', 0, 0, 1)
+  assert.ok(sipping.arms[1].wrist[1] > 1.3, 'coffee break should lift the mug toward the face')
 })
 
 test('cancelling and restarting tasks during chair approach preserves continuous movement', () => {
   const layout = makeOfficeLayout(makeTeam(1))
-  const route = makeWalkRoute(layout.seats[0], layout.sectors[0], 0)
+  const route = routeFor(layout, layout.seats[0], 0)
   let state = createMovementState(route)
   const advance = active => {
     const before = state.position

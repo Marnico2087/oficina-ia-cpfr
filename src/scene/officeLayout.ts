@@ -22,13 +22,18 @@ export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing =
     // Using the old 3.62 pitch made agents walk straight through the next desk.
     const rowPitch = 4.7
     const workDepth = (5.65 + (rows - 1) * rowPitch) * scale
-    const sharedDepth = agents.length >= 3 ? 3.35 * scale : .75 * scale
+    // Even a one-person studio gets a small, useful coffee corner; the
+    // shared strip grows just enough to make a real, walkable stop.
+    const sharedDepth = agents.length >= 3 ? 3.35 * scale : agents.length > 0 ? 2.8 * scale : .75 * scale
     const sector: Sector = { id: 'general', center: [width / 2, 0, workDepth / 2], width, depth: workDepth, count: agents.length }
     const seats: Seat[] = agents.map((agent, i) => ({ agent, sector: 'general',
       position: [(2.23 + i % columns * 3.46) * scale, 0, (2.18 + Math.floor(i / columns) * rowPitch) * scale],
     }))
+    const amenities: OfficeAmenity[] = agents.length ? [{ id: 'coffee', x: 1.3 * scale,
+      z: workDepth + (agents.length < 3 ? 1.4 : 1.675) * scale }] : []
+    if (agents.length >= 3) amenities.unshift({ id: 'meeting', x: width / 2, z: workDepth + sharedDepth / 2 })
     return { sectors: [sector], seats, width, depth: workDepth + sharedDepth, passages: [],
-      amenities: agents.length >= 3 ? [{ id: 'meeting', x: width / 2, z: workDepth + sharedDepth / 2 }] : [] }
+      amenities }
   }
   const order: Department[] = ['engineering', 'architecture', 'design', 'quality', 'research', 'data', 'security', 'operations', 'general']
   const groups = order.map(id => ({ id, agents: agents.filter(agent => agent.department === id) }))
@@ -99,7 +104,7 @@ export function makeOfficeLayout(agents: OfficeAgent[], spacing: OfficeSpacing =
     sharedDepth = (agents.length < 9 ? 3.45 : agents.length < 25 ? 4.3 : 5.2) * scale
     const commonZ = workDepth + sharedDepth / 2
     amenities.push({ id: 'meeting', x: width / 2, z: commonZ })
-    if (agents.length >= 9) amenities.push({ id: 'coffee', x: Math.max(1.25, width * .14), z: commonZ })
+    if (agents.length >= 7) amenities.push({ id: 'coffee', x: Math.max(1.25, width * .14), z: commonZ })
     if (agents.length >= 25) amenities.push({ id: 'focus', x: width - Math.max(1.25, width * .14), z: commonZ })
   }
   return { sectors, seats, passages, amenities, width, depth: workDepth + sharedDepth }

@@ -9,7 +9,7 @@ import { OfficeCampus } from './OfficeCampus'
 import { OfficeAvatar } from './OfficeAvatar'
 import { OfficeCrowdLOD } from './OfficeCrowdLOD'
 import { makeOfficeLayout, type OfficeLayout, type Seat } from './officeLayout'
-import { advanceMovement, CHAIR_Z, createMovementState, makeWalkRoute, STAND_Z } from './officeMotion'
+import { advanceMovement, CHAIR_Z, createMovementState, makeWalkRoute, STAND_Z, type CoffeeStop } from './officeMotion'
 import { useOfficePreferences } from './OfficePreferencesContext'
 import type { OfficePreferences } from './officePreferences'
 import { useLanguage } from '../locales/i18n'
@@ -43,6 +43,7 @@ function BadgeProjector({ overlayId, seats, sectors, avatars }: { overlayId: str
         if (label) {
           label.dataset.movementStage = String(avatar.userData.movementStage || 'standing')
           label.dataset.walking = String(Boolean(avatar.userData.walking))
+          label.dataset.coffeeBreak = String(Boolean(avatar.userData.coffeeBreak))
         }
         avatar.getWorldPosition(point.current)
         if (label) {
@@ -123,24 +124,26 @@ function Desk({ color, active, theme }: { color: string; active: boolean; theme:
   </group>
 }
 
-function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferences, avatars }: {
-  seat: Seat; sector: OfficeLayout['sectors'][number]; ordinal: number; selected: boolean; pose: AgentPose; onSelect: () => void; preferences: OfficePreferences; avatars: RefObject<Map<string, Group>>
+function Workstation({ seat, sector, ordinal, coffeeStop, selected, pose, onSelect, preferences, avatars }: {
+  seat: Seat; sector: OfficeLayout['sectors'][number]; ordinal: number; coffeeStop?: CoffeeStop; selected: boolean; pose: AgentPose; onSelect: () => void; preferences: OfficePreferences; avatars: RefObject<Map<string, Group>>
 }) {
   const { agent, position } = seat
   const working = pose === 'thinking' || pose === 'coding' || pose === 'researching' || pose === 'finishing'
-  const route = useMemo(() => makeWalkRoute(seat, sector, ordinal), [seat, sector, ordinal])
+  const route = useMemo(() => makeWalkRoute(seat, sector, ordinal, coffeeStop), [seat, sector, ordinal, coffeeStop])
   const movement = useRef(createMovementState(route))
   useEffect(() => { movement.current = createMovementState(route) }, [route])
   const traveler = useRef<Group>(null)
   const walkRef = useRef(0)
   const gaitRef = useRef(0)
   const seatedRef = useRef(0)
+  const coffeeRef = useRef(false)
   useFrame((_, delta) => {
     if (!traveler.current) return
     const previousPosition = movement.current.position
     const frame = advanceMovement(movement.current, route, delta, working, preferences.motion, ordinal)
     movement.current = frame
     traveler.current.userData.movementStage = frame.stage
+    traveler.current.userData.coffeeBreak = frame.stage === 'coffee'
     traveler.current.userData.walking = frame.walking
     if (frame.walking) {
       const distance = Math.hypot(frame.position[0] - previousPosition[0], frame.position[1] - previousPosition[1])
@@ -153,11 +156,12 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
     traveler.current.rotation.y += MathUtils.clamp(turn, -smoothing * 5, smoothing * 5)
     walkRef.current = frame.walking ? 1 : 0
     seatedRef.current = frame.seated
+    coffeeRef.current = frame.stage === 'coffee'
   })
   return <group position={position}>
     <Desk color={agent.color} active={working} theme={preferences.theme} />
     <group ref={node => { traveler.current = node; if (node) avatars.current.set(agent.id, node); else avatars.current.delete(agent.id) }} position={[0, 0, STAND_Z]} rotation={[0, Math.PI, 0]}>
-      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} gaitRef={gaitRef} seatedRef={seatedRef}/>
+      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} gaitRef={gaitRef} seatedRef={seatedRef} coffeeRef={coffeeRef}/>
     </group>
   </group>
 }
@@ -165,6 +169,12 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
 function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeats, distantSeats, overview, preferences }: { selected: AgentId; tasks: OfficeTask[]; onSelect: (value: AgentId) => void; now: number; overlayId: string; layout: OfficeLayout; visibleSeats: Seat[]; distantSeats: Seat[]; overview: boolean; preferences: OfficePreferences }) {
   const { size } = useThree()
   const avatars = useRef(new Map<string, Group>())
+  const coffeeStop = useMemo(() => {
+    const station = layout.amenities.find(amenity => amenity.id === 'coffee')
+    if (!station) return undefined
+    const workDepth = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2))
+    return { x: station.x, z: station.z, aisleZ: workDepth + .3 }
+  }, [layout])
   const distantWorking = useMemo(() => new Set(distantSeats.filter(seat =>
     ['thinking', 'coding', 'researching', 'finishing'].includes(
       resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now),
@@ -193,7 +203,7 @@ function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeat
       shadow-normalBias={.028} shadow-bias={-.0002}/>
     <OfficeCampus layout={layout} preferences={preferences}/>
     <OfficeCrowdLOD seats={distantSeats} theme={preferences.theme} working={distantWorking} onSelect={onSelect}/>
-    {visibleSeats.map(seat => <Workstation key={seat.agent.id} seat={seat} sector={layout.sectors.find(sector => sector.id === seat.sector)!} ordinal={layout.seats.filter(item => item.sector === seat.sector).findIndex(item => item.agent.id === seat.agent.id)} selected={selected === seat.agent.id} pose={resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now)} onSelect={() => onSelect(seat.agent.id)} preferences={preferences} avatars={avatars}/>)}
+    {visibleSeats.map(seat => <Workstation key={seat.agent.id} seat={seat} sector={layout.sectors.find(sector => sector.id === seat.sector)!} ordinal={layout.seats.findIndex(item => item.agent.id === seat.agent.id)} coffeeStop={coffeeStop} selected={selected === seat.agent.id} pose={resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now)} onSelect={() => onSelect(seat.agent.id)} preferences={preferences} avatars={avatars}/>)}
     <BadgeProjector overlayId={overlayId} seats={visibleSeats} sectors={layout.sectors} avatars={avatars}/>
     <OrthographicCamera key={`${cameraKey}-camera`} makeDefault position={[target[0] + 15, target[1] + 17, target[2] + 19]} zoom={overview ? overviewZoom : 42} near={.1} far={Math.max(250, layout.width + layout.depth + 100)} />
     <OrbitControls key={`${cameraKey}-controls`} target={target} minPolarAngle={.25} maxPolarAngle={1.46} enablePan enableDamping dampingFactor={.08} minZoom={overview ? Math.min(2, overviewZoom) : 12} maxZoom={165} />

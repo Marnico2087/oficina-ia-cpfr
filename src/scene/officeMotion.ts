@@ -2,7 +2,8 @@ import type { Seat, Sector } from './officeLayout'
 import type { OfficeMotion } from './officePreferences'
 
 export type Point = [number, number]
-export type Route = { points: Point[]; durations: number[]; total: number }
+export type Route = { points: Point[]; durations: number[]; total: number; breakIndex: number; breakStage: 'coffee' | 'resting' }
+export type CoffeeStop = { x: number; z: number; aisleZ: number }
 export const CHAIR_Z = .94
 export const STAND_Z = 1.18
 export const STAND_SIDE_X = .98
@@ -11,9 +12,9 @@ export const DESK_FACING = Math.PI
 // Walking to the front of the chair and sitting are separate phases.
 export const CHAIR_APPROACH_Z = .56
 
-// Paths use the unobstructed front edge of each desk row, the side aisle,
-// and the lounge strip at the sector entrance. Every agent has a home seat.
-export function makeWalkRoute(seat: Seat, sector: Sector, slot: number): Route {
+// Paths use desk-side aisles and the shared corridor. A coffee visit goes
+// around the outside of each bay, then enters the kitchenette from its aisle.
+export function makeWalkRoute(seat: Seat, sector: Sector, slot: number, coffee?: CoffeeStop): Route {
   const [x, , z] = seat.position
   const leftEdge = sector.center[0] - sector.width / 2
   // Compact shared rooms have a narrower left margin than department bays.
@@ -21,12 +22,20 @@ export function makeWalkRoute(seat: Seat, sector: Sector, slot: number): Route {
   const sideAisle = leftEdge + (sector.id === 'general' && sector.width <= 14 ? .42 : .62)
   const front = sector.center[2] + sector.depth / 2 - .88
   const loungeX = leftEdge + 1.2 + (slot % 3) * .65
-  const points: Point[] = [
+  const points: Point[] = coffee ? [
+    [x + STAND_SIDE_X, z + STAND_Z], [x + STAND_SIDE_X, z + AISLE_Z], [sideAisle, z + AISLE_Z], [sideAisle, front],
+    [sideAisle, coffee.aisleZ], [coffee.x + (slot % 3 - 1) * .75, coffee.aisleZ],
+    [coffee.x + (slot % 3 - 1) * .75, coffee.z + .82],
+    [coffee.x + (slot % 3 - 1) * .75, coffee.aisleZ], [sideAisle, coffee.aisleZ], [sideAisle, front],
+    [sideAisle, z + AISLE_Z], [x + STAND_SIDE_X, z + AISLE_Z], [x + STAND_SIDE_X, z + STAND_Z],
+  ] : [
     [x + STAND_SIDE_X, z + STAND_Z], [x + STAND_SIDE_X, z + AISLE_Z], [sideAisle, z + AISLE_Z], [sideAisle, front],
     [loungeX, front], [sideAisle, front], [sideAisle, z + AISLE_Z], [x + STAND_SIDE_X, z + AISLE_Z], [x + STAND_SIDE_X, z + STAND_Z],
   ]
+  const breakIndex = coffee ? 6 : 4
   const durations = points.slice(1).map((point, index) => Math.hypot(point[0] - points[index][0], point[1] - points[index][1]) / 1.3)
-  return { points, durations, total: durations.reduce((sum, seconds) => sum + seconds, 0) + 12 }
+  return { points, durations, total: durations.reduce((sum, seconds) => sum + seconds, 0) + 12,
+    breakIndex, breakStage: coffee ? 'coffee' : 'resting' }
 }
 
 export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { position: Point; walking: boolean; resting: boolean; facing: number } {
@@ -38,8 +47,8 @@ export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { p
   if (remaining < 3) return { position: home, walking: false, resting: false, facing: Math.PI }
   remaining -= 3
   for (let index = 0; index < route.durations.length; index++) {
-    if (index === 4) {
-      if (remaining < 4) return { position: route.points[4], walking: false, resting: true, facing: 0 }
+    if (index === route.breakIndex) {
+      if (remaining < 4) return { position: route.points[route.breakIndex], walking: false, resting: true, facing: 0 }
       remaining -= 4
     }
     const duration = route.durations[index]
@@ -58,7 +67,7 @@ export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { p
   return { position: home, walking: false, resting: false, facing: Math.PI }
 }
 
-export type MovementStage = 'standing' | 'walking' | 'resting' | 'returning' | 'approaching' | 'sitting' | 'working' | 'rising' | 'leaving'
+export type MovementStage = 'standing' | 'walking' | 'resting' | 'coffee' | 'returning' | 'approaching' | 'sitting' | 'working' | 'rising' | 'leaving'
 export type MovementState = {
   stage: MovementStage; position: Point; facing: number; seated: number; walking: boolean
   cursor: number; waypoints: Point[]; wait: number; idleTime: number
@@ -81,8 +90,8 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
   const front: Point = [chair[0], home[1] + CHAIR_APPROACH_Z - STAND_Z]
   const side: Point = [home[0], front[1]]
   next.walking = false
-  if ((active || motion === 'off') && (next.stage === 'walking' || next.stage === 'resting')) {
-    const outbound = next.cursor <= 4
+  if ((active || motion === 'off') && (next.stage === 'walking' || next.stage === 'resting' || next.stage === 'coffee')) {
+    const outbound = next.stage === route.breakStage || next.cursor <= route.breakIndex
     next.waypoints = outbound ? route.points.slice(0, next.cursor).reverse() : route.points.slice(next.cursor)
     next.cursor = 0
     next.stage = 'returning'
@@ -132,18 +141,19 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
     next.facing = DESK_FACING
     if (!active && motion !== 'off') {
       next.idleTime += step * (motion === 'subtle' ? .45 : 1)
-      if (next.idleTime > 12 + ordinal % 5 * 4) {
+      // Spread visits over time so a large team does not crowd the compact counter.
+      if (next.idleTime > 12 + (ordinal * 7 % 31)) {
         next.stage = 'walking'
         next.cursor = 1
       }
     }
     return next
   }
-  if (next.stage === 'resting') {
+  if (next.stage === 'resting' || next.stage === 'coffee') {
     next.wait += step
-    if (next.wait < 3.5) return next
+    if (next.wait < (next.stage === 'coffee' ? 5 : 3.5)) return next
     next.stage = 'walking'
-    next.cursor = 5
+    next.cursor = route.breakIndex + 1
   }
   if (next.stage === 'approaching' || next.stage === 'leaving') {
     const target = next.waypoints[next.cursor]
@@ -194,7 +204,12 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
   if (distance <= 1.35 * step + .0001) {
     next.position = [...target]
     next.cursor++
-    if (!returning && next.cursor === 5) { next.stage = 'resting'; next.wait = 0; next.walking = false }
+    if (!returning && next.cursor === route.breakIndex + 1) {
+      next.stage = route.breakStage
+      next.wait = 0
+      next.walking = false
+      if (route.breakStage === 'coffee') next.facing = DESK_FACING
+    }
     else if (next.cursor >= points.length) {
       next.stage = 'standing'
       next.cursor = 0

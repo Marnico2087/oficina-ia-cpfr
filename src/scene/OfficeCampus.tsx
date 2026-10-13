@@ -349,10 +349,8 @@ export function OfficeCampus({ layout, preferences }: { layout: OfficeLayout; pr
       : amenity.id === 'coffee'
         ? <CoffeePoint key={amenity.id} x={amenity.x} z={amenity.z}/>
         : <FocusNook key={amenity.id} x={amenity.x} z={amenity.z}/>)}
-    {layout.sectors.length === 1 && layout.sectors[0].id === 'general' && layout.sectors[0].count >= 3 && <>
-      <CoffeePoint x={1.3} z={layout.amenities[0]?.z || layout.depth - 1.6}/>
-      <Planter x={layout.width - .9} z={layout.amenities[0]?.z || layout.depth - 1.6}/>
-    </>}
+    {layout.sectors.length === 1 && layout.sectors[0].id === 'general' && layout.sectors[0].count >= 3 &&
+      <Planter x={layout.width - .9} z={layout.amenities.find(amenity => amenity.id === 'meeting')?.z || layout.depth - 1.6}/>}
     <GlassFacade width={layout.width} depth={layout.depth} theme={preferences.theme}/>
     <ambientLight intensity={.47} color="#e5efff"/>
   </group>
