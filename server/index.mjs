@@ -7,6 +7,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { discoverProviders, foldersOverlap, launchArgs } from './providers.mjs'
 import { DEFAULT_AGENTS, makeAgent, validStoredAgents, validateAgent } from './agents.mjs'
+import { composeAgentPrompt } from './agent-prompt.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
@@ -252,7 +253,8 @@ app.post('/api/tasks', (req, res) => {
   const provider = providers.find(item => item.id === requestedProvider)
   if (!provider) return res.status(400).json({ error: 'Motor de IA desconhecido.' })
   if (!provider.available) return res.status(503).json({ error: `${provider.name} não encontrado. Instale e autentique o CLI, depois reinicie o escritório.` })
-  if (!agents.some(agent => agent.id === agentId)) return res.status(400).json({ error: 'Agente desconhecido.' })
+  const agent = agents.find(item => item.id === agentId)
+  if (!agent) return res.status(400).json({ error: 'Agente desconhecido.' })
   if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > MAX_PROMPT) return res.status(400).json({ error: 'Tarefa vazia ou extensa demais.' })
   if (typeof workspace !== 'string' || workspace.length > 1000 || !isAbsolute(workspace)) return res.status(400).json({ error: 'Informe uma pasta de projeto com caminho absoluto.' })
   try {
@@ -265,16 +267,18 @@ app.post('/api/tasks', (req, res) => {
   if ([...active.values()].some(a => foldersOverlap(canonical, a.canonical))) return res.status(409).json({ error: 'Já existe uma tarefa trabalhando nessa pasta (ou numa pasta dentro dela). Aguarde ou escolha outro projeto para evitar conflitos.' })
 
   const task = {
-    id: randomUUID(), agentId, agentName: agents.find(agent => agent.id === agentId).name, provider: provider.id, prompt: prompt.trim(), workspace, status: 'running', phase: 'thinking',
+    id: randomUUID(), agentId, agentName: agent.name, provider: provider.id, prompt: prompt.trim(), workspace, status: 'running', phase: 'thinking',
     createdAt: stamp(), updatedAt: stamp(), finishedAt: null, lastMessage: '', events: [], threadId: null, usage: null,
   }
   tasks.unshift(task)
   tasks = tasks.slice(0, MAX_TASKS)
   addEvent(task, `Tarefa enviada ao ${provider.name}.`)
 
-  // Pass the human's prompt through stdin; never interpolate it into a shell command.
+  // Every provider receives the same role-aware request. Keep the original
+  // human text in history, and never interpolate either prompt into a shell.
+  const executionPrompt = composeAgentPrompt(agent, task.prompt)
   const args = launchArgs(provider.id, workspace)
-  if (provider.id === 'gemini') args.splice(1, 0, task.prompt)
+  if (provider.id === 'gemini') args.splice(1, 0, executionPrompt)
   const command = provider.bin.endsWith('.js') ? process.execPath : provider.bin
   if (provider.bin.endsWith('.js')) args.unshift(provider.bin)
   let child
@@ -310,7 +314,7 @@ app.post('/api/tasks', (req, res) => {
     addEvent(task, task.status === 'completed' ? 'Tarefa concluída.' : task.status === 'cancelled' ? 'Tarefa cancelada.' : `Falha: ${task.failure}`, task.status === 'completed' ? 'success' : 'error')
   })
   child.stdin.on('error', () => {})
-  child.stdin.end(provider.id === 'gemini' ? '' : task.prompt)
+  child.stdin.end(provider.id === 'gemini' ? '' : executionPrompt)
   res.status(201).json({ task })
 })
 

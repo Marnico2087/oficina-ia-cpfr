@@ -61,45 +61,70 @@ function Bookshelf({ x, z }: { x: number; z: number }) {
   </group>
 }
 
+// Shallow storage is attached to the far-right architectural edge. Full-size
+// bookcases placed between workstations previously invaded chair approaches.
+function SupplyWall({ x, z, dark, accent }: { x: number; z: number; dark: boolean; accent: string }) {
+  return <group position={[x, 0, z]}>
+    <RoundedBox position={[0, 1.03, 0]} args={[.46, 2.06, 1.46]} radius={.045} castShadow>
+      <meshStandardMaterial color={dark ? '#3d5367' : '#e4ebed'} roughness={.83}/>
+    </RoundedBox>
+    {[.47, 1.05, 1.65].map((y, i) => <group key={y} position={[-.242, y, 0]}>
+      <mesh><boxGeometry args={[.018, .025, 1.31]}/><meshStandardMaterial color={accent} roughness={.78}/></mesh>
+      {[-.41, -.1, .21, .47].map((offset, j) => <RoundedBox key={j} position={[-.018, .1 + (j % 2) * .018, offset]}
+        args={[.035, .24 + (j % 2) * .035, .19]} radius={.008} castShadow>
+        <meshStandardMaterial color={['#8baebe', '#d0aa7c', '#94bba3', '#aaa5cb'][(i + j) % 4]} roughness={.9}/>
+      </RoundedBox>)}
+    </group>)}
+    <RoundedBox position={[-.26, 1.99, 0]} args={[.033, .1, 1.36]} radius={.016}>
+      <meshStandardMaterial color={accent}/>
+    </RoundedBox>
+  </group>
+}
+
+function TeamNoticeWall({ width, depth, dark, accent }: { width: number; depth: number; dark: boolean; accent: string }) {
+  const z = -depth / 2 + .41
+  const length = Math.min(width - 2.1, 6.5)
+  return <group position={[0, 1.98, z]}>
+    <RoundedBox args={[length, 1.05, .085]} radius={.04} castShadow>
+      <meshStandardMaterial color={dark ? '#364b61' : '#d8e4e8'} roughness={.8}/>
+    </RoundedBox>
+    <RoundedBox position={[0, 0, .054]} args={[length - .17, .89, .02]} radius={.021}>
+      <meshStandardMaterial color={dark ? '#203348' : '#f9fbfa'} roughness={.92}/>
+    </RoundedBox>
+    {Array.from({ length: 3 }, (_, i) => {
+      const colWidth = (length - .45) / 3
+      const x = (i - 1) * colWidth
+      return <group key={i} position={[x, 0, .077]}>
+        <mesh position={[0, .29, 0]}><boxGeometry args={[colWidth - .25, .062, .009]}/>
+          <meshStandardMaterial color={i === 0 ? accent : i === 1 ? '#77a9ba' : '#a99bc3'}/>
+        </mesh>
+        {Array.from({ length: 3 }, (_, n) => <group key={n} position={[-(colWidth - .55) / 2, .08 - n * .19, .006]}>
+          <mesh position={[.03, 0, 0]}><circleGeometry args={[.034, 12]}/><meshBasicMaterial color={n === 2 ? '#9bc7af' : accent}/></mesh>
+          <mesh position={[.15 + (colWidth - .8) * .3, 0, 0]}><planeGeometry args={[Math.max(.15, colWidth - .85 - n * .13), .025]}/>
+            <meshBasicMaterial color={dark ? '#7798ae' : '#93aab5'}/>
+          </mesh>
+        </group>)}
+      </group>
+    })}
+  </group>
+}
+
 // Wall-mounted fixtures bring visual depth to the shared studio without
 // consuming precious aisle space or adding furniture that agents could clip.
 function StudioIdentity({ width, depth, dark, accent }: { width: number; depth: number; dark: boolean; accent: string }) {
-  const wallZ = -depth / 2 + .285
-  const light = dark ? '#e2eef3' : '#364c5c'
-  const frame = dark ? '#41586d' : '#bacbd1'
-  const boards = width > 8 ? 3 : 2
+  const wallZ = -depth / 2 + .41
   return <group>
-    <mesh position={[0, 2.73, wallZ]}><boxGeometry args={[width - .62, .69, .06]}/>
-      <meshStandardMaterial color={dark ? '#30485b' : '#e0eae9'} roughness={.92}/></mesh>
-    {Array.from({length: boards}, (_, i) => {
-      const spacing = (width - 2.3) / boards
-      return <group key={i} position={[(i - (boards - 1) / 2) * spacing, 2.69, wallZ + .06]}>
-        <RoundedBox args={[Math.min(2.2, spacing - .15), .47, .055]} radius={.028}>
-          <meshStandardMaterial color={dark ? '#24394d' : '#f9fbf9'} roughness={.85}/></RoundedBox>
-        <mesh position={[-.4, .10, .032]}><boxGeometry args={[.31, .085, .009]}/>
-          <meshStandardMaterial color={i === 0 ? accent : '#8eabc0'}/></mesh>
-        {Array.from({length: 3}, (_, j) => <mesh key={j} position={[.07, .10 - .105 * j, .032]}>
-          <boxGeometry args={[Math.min(.86, spacing * .36) - j * .14, .024, .009]}/>
-          <meshStandardMaterial color={dark ? '#91b4c3' : '#b5c5c8'}/></mesh>)}
-      </group>
-    })}
-    <group position={[width / 2 - .72, 1.88, wallZ + .10]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[.31, .31, .065, 24]}/>
-        <meshStandardMaterial color={frame}/></mesh>
-      <mesh position={[0, 0, .043]}><circleGeometry args={[.26, 24]}/><meshStandardMaterial color={light}/></mesh>
-      <mesh position={[0, .06, .05]} rotation={[0, 0, -.4]}><boxGeometry args={[.014, .18, .009]}/><meshBasicMaterial color={accent}/></mesh>
-      <mesh position={[.045, -.02, .05]} rotation={[0, 0, .7]}><boxGeometry args={[.014, .12, .009]}/><meshBasicMaterial color={accent}/></mesh>
-    </group>
-    <group position={[width / 2 - .55, 0, wallZ + .44]}>
-      <RoundedBox position={[0, .69, 0]} args={[.61, 1.38, .52]} radius={.035} castShadow>
-        <meshStandardMaterial color={dark ? '#526779' : '#a4bac5'} roughness={.73}/></RoundedBox>
-      {[.33, .78, 1.18].map((y,i) => <group key={i} position={[0, y, .266]}>
-        <mesh><boxGeometry args={[.49, .022, .019]}/><meshStandardMaterial color={frame}/></mesh>
-        <mesh position={[.15, .14, .012]}><boxGeometry args={[.06, .24, .009]}/><meshStandardMaterial color={accent}/></mesh>
-      </group>)}
-      <mesh position={[0, 1.48, 0]}><cylinderGeometry args={[.11, .085, .14, 9]}/><meshStandardMaterial color="#798f85"/></mesh>
-      <mesh position={[0, 1.67, 0]}><sphereGeometry args={[.18, 8, 7]}/><meshStandardMaterial color="#65a38b"/></mesh>
-    </group>
+    <TeamNoticeWall width={width} depth={depth} dark={dark} accent={accent}/>
+    <SupplyWall x={width / 2 - .39} z={-depth / 2 + 1.42} dark={dark} accent={accent}/>
+    {/* One shallow identity bar above the team noticeboard. Both are fixed to
+        the wall with a visible gap; avoid duplicate floating boards or clocks. */}
+    <RoundedBox position={[0, 2.71, wallZ]} args={[Math.min(6.6, width - 1.2), .14, .075]} radius={.025}>
+      <meshStandardMaterial color={dark ? '#415f71' : '#b9cbd1'} roughness={.85}/>
+    </RoundedBox>
+    <mesh position={[0, 2.71, wallZ + .045]}>
+      <boxGeometry args={[Math.min(1.4, width * .27), .044, .008]}/>
+      <meshBasicMaterial color={accent}/>
+    </mesh>
   </group>
 }
 
@@ -147,6 +172,13 @@ function SectorRoom({ sector, preferences }: { sector: Sector; preferences: Offi
       <meshStandardMaterial color={palette.floor} transparent opacity={.18} roughness={.92} depthWrite={false}/>
     </mesh>
     <mesh position={[0, -.027, -depth / 2 + .27]}><boxGeometry args={[width - .55, .018, .13]}/><meshStandardMaterial color={accent} transparent opacity={.65}/></mesh>
+    {/* Floor-level circulation markers make the route legible without
+        placing a single obstacle in an agent's walking path. */}
+    {Array.from({ length: Math.max(0, Math.floor((depth - 2.3) / 1.18)) }, (_, i) =>
+      <mesh key={`aisle-mark-${i}`} position={[-width / 2 + .58, -.034, -depth / 2 + 2.05 + i * 1.18]}>
+        <boxGeometry args={[.40, .009, .095]}/>
+        <meshStandardMaterial color={accent} transparent opacity={.35} roughness={.98}/>
+      </mesh>)}
     {/* A shared studio gets real architectural edges without interior walls
         isolating the team. Low wall cladding leaves the window bays visible. */}
     <group ref={backArchitecture}>
@@ -154,6 +186,17 @@ function SectorRoom({ sector, preferences }: { sector: Sector; preferences: Offi
       <meshStandardMaterial color={dark ? '#33465c' : '#f6f8f8'} roughness={.91}/>
     </RoundedBox>
     <mesh position={[0, 1.16, back + .25]}><boxGeometry args={[width - .44, .055, .09]}/><meshStandardMaterial color={accent} roughness={.87}/></mesh>
+    {/* Frosted upper glass and mullions give depth to the office without
+        adding partitions between teammates. */}
+    <mesh position={[0, 1.98, back + .12]}>
+      <boxGeometry args={[width - .42, 1.57, .055]}/>
+      <meshStandardMaterial color={palette.window} transparent opacity={dark ? .22 : .13} depthWrite={false} roughness={.28} metalness={.09}/>
+    </mesh>
+    {Array.from({length: Math.max(2, Math.ceil(width / 3))}, (_, i) =>
+      <mesh key={`glazing-frame-${i}`} position={[-width / 2 + .22 + i * ((width - .44) / Math.max(1, Math.ceil(width / 3) - 1)), 1.97, back + .19]}>
+        <boxGeometry args={[.046, 1.65, .071]}/>
+        <meshStandardMaterial color={dark ? '#526b80' : '#b5c9d6'} roughness={.76}/>
+      </mesh>)}
     {Array.from({length: Math.max(2, Math.floor(width / .9))}, (_, i) => {
       const x = -width / 2 + .47 + i * ((width - .94) / Math.max(1, Math.floor(width / .9) - 1))
       return <mesh key={`wall-slat-${i}`} position={[x, .58, back + .23]}>

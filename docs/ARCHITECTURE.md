@@ -23,7 +23,7 @@ Selected CLI → filesystem inside the selected project directory
 
 ## Modes and data
 
-Demo mode creates simulated tasks in browser memory. Live mode asks the local API to launch independently managed CLI jobs. Agent profiles are user-editable task slots, not a coordinated agent swarm. No agent-to-agent communication or shared memory is currently implemented.
+Demo mode creates simulated tasks in browser memory. Live mode asks the local API to launch independently managed CLI jobs. Each real run includes the selected agent's configured name, role, specialty and department in the CLI request, while the original human task is preserved in history. Agent profiles are user-editable task slots, not a coordinated agent swarm. No agent-to-agent communication or shared memory is currently implemented.
 
 `server/agents.mjs` validates and persists each local roster atomically to `agents.json`, separate from task history. The REST API exposes `GET /api/state`, `POST /api/agents`, `PUT /api/agents/:id`, and `DELETE /api/agents/:id`. Updates stream over the existing SSE channel; concurrent edits are serialized before acknowledgement. Profiles start with four examples on first use but can be reduced to zero or expanded as needed. Agents cannot be deleted while they have a running task; deleted agents retain their completed history.
 

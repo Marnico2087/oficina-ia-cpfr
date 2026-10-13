@@ -110,7 +110,8 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
   if (next.stage === 'sitting' || next.stage === 'rising') {
     const direction = next.stage === 'sitting' ? 1 : -1
     next.seated = Math.min(1, Math.max(0, next.seated + direction * step / .72))
-    next.position = [chair[0], front[1] + (chair[1] - front[1]) * next.seated]
+    const ease = next.seated * next.seated * (3 - 2 * next.seated)
+    next.position = [chair[0], front[1] + (chair[1] - front[1]) * ease]
     next.facing = DESK_FACING
     if (next.seated === 1) next.stage = 'working'
     if (next.seated === 0) {

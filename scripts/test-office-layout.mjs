@@ -57,13 +57,14 @@ test('walking shoes use alternating planted steps with stable leg lengths', () =
   const samples = Array.from({ length: 33 }, (_, index) => index * Math.PI * 2 / 32)
   for (const phase of samples) {
     const pose = makeAvatarRigPose(0, 1, 0, 'idle', 0, 0, phase)
-    assert.ok(pose.legs.some(leg => Math.abs(leg.foot[1] - .082) < .00001), 'one shoe must remain planted')
+    assert.ok(pose.legs.some(leg => Math.abs(leg.foot[1] - .078) < .00001), 'one shoe must remain planted')
     for (const leg of pose.legs) {
       const femur = Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i]))
       const shin = Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i]))
       assert.ok(Math.abs(femur - .51) < .001, 'femur stretches while walking')
       assert.ok(Math.abs(shin - .50) < .001, 'shin stretches while walking')
-      assert.ok(leg.foot[1] >= .082 - 1e-7, 'shoe clips the floor')
+      assert.ok(leg.foot[1] >= .078 - 1e-7, 'shoe clips the floor')
+      assert.ok(Math.abs(leg.ankle[1] - leg.foot[1] - .105) < 1e-6, 'ankle misses the shoe collar')
       assert.ok(Math.abs(leg.ankle[2] - (leg.foot[2] - .075)) < 1e-6, 'shoe collar detached from ankle')
       assert.ok(leg.knee[1] > .60 && leg.knee[1] < .83, 'walking knee bends into crouch')
     }
@@ -82,9 +83,11 @@ test('walking shoes use alternating planted steps with stable leg lengths', () =
       assert.ok(Math.abs(leg.ankle[2] - (leg.foot[2] - .075)) < .001, 'shoe collar separates during seating')
       assert.ok(leg.knee[1] > .63, 'knee sinks through chair cushion during sitting')
       if (seated >= .8) assert.ok(leg.knee[2] > .36, 'knee does not clear the front of the chair during sitting')
-      assert.ok(Math.abs(leg.hip[1] - (1.16 - seated * .4)) < .001, 'hips do not travel with the pelvis')
+      const eased = seated * seated * (3 - 2 * seated)
+      assert.ok(Math.abs(leg.hip[1] - (1.16 - eased * .4)) < .001, 'hips do not travel with the pelvis')
     }
-    assert.ok(Math.abs(pose.torsoDrop - seated * .4) < .001, 'torso is detached from the hip during seating')
+    const eased = seated * seated * (3 - 2 * seated)
+    assert.ok(Math.abs(pose.torsoDrop - eased * .4) < .001, 'torso is detached from the hip during seating')
   }
 })
 function makeTeam(count) {

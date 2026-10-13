@@ -184,7 +184,15 @@ function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeat
     <color attach="background" args={[preferences.theme === 'midnight' ? '#111b2e' : preferences.theme === 'warm' ? '#efe6df' : '#edf5fa']} />
     <ambientLight intensity={1.3} color="#d8e7ff" />
     <hemisphereLight args={['#aac6eb', '#293852', 1.7]} />
-    <directionalLight position={[7, 14, 12]} intensity={2.4} color="#f4ecdc" />
+    <directionalLight position={[7, 14, 12]} intensity={2.4} color="#f4ecdc"
+      castShadow={layout.seats.length <= 12}
+      shadow-mapSize-width={2048} shadow-mapSize-height={2048}
+      shadow-camera-left={-Math.max(16, layout.width + 2)}
+      shadow-camera-right={Math.max(16, layout.width + 2)}
+      shadow-camera-top={Math.max(16, layout.depth + 2)}
+      shadow-camera-bottom={-Math.max(16, layout.depth + 2)}
+      shadow-camera-near={.5} shadow-camera-far={95}
+      shadow-normalBias={.028} shadow-bias={-.0002}/>
     <OfficeCampus layout={layout} preferences={preferences}/>
     <OfficeCrowdLOD seats={distantSeats} theme={preferences.theme} working={distantWorking} onSelect={onSelect}/>
     {visibleSeats.map(seat => <Workstation key={seat.agent.id} seat={seat} sector={layout.sectors.find(sector => sector.id === seat.sector)!} ordinal={layout.seats.filter(item => item.sector === seat.sector).findIndex(item => item.agent.id === seat.agent.id)} selected={selected === seat.agent.id} pose={resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now)} onSelect={() => onSelect(seat.agent.id)} preferences={preferences} avatars={avatars}/>)}

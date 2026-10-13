@@ -17,7 +17,10 @@ export type AvatarRigPose = {
 export function makeAvatarRigPose(seatedInput: number, walking: boolean | number, seconds: number,
   activity: 'idle' | 'thinking' | 'coding' | 'researching' | 'finishing' | 'celebrating' | 'error',
   socialBlend = 0, thinkingProgress = activity === 'thinking' ? 1 : 0, gaitPhase = seconds * 9): AvatarRigPose {
-  const seated = Math.max(0, Math.min(1, seatedInput))
+  // Ease the body into and out of the chair so the hips and torso do not
+  // stop or start at full speed. All joints share this same transition.
+  const seatProgress = Math.max(0, Math.min(1, seatedInput))
+  const seated = seatProgress * seatProgress * (3 - 2 * seatProgress)
   const stride = (typeof walking === 'boolean' ? Number(walking) : Math.max(0, Math.min(1, walking))) * (1 - seated)
   const typing = seated > .94 && activity === 'coding'
   const thinking = seated * Math.max(0, Math.min(1, thinkingProgress))
@@ -54,12 +57,14 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
     const step = Math.sin(phase)
     // Feet stay on the ground during the support phase. Only the swinging
     // leg lifts, using a smooth arc tied to actual distance traveled.
-    const lift = Math.pow(Math.max(0, step), 1.5) * .11 * stride
+    const lift = Math.pow(Math.max(0, step), 1.5) * .105 * stride
     const footZ = .11 - Math.cos(phase) * .145 * stride
     // The ankle sits INSIDE the shoe collar instead of behind the heel. The
     // standing pelvis is high enough for nearly straight legs, while the
     // seated pelvis drops to the chair cushion without detaching the thigh.
-    const ankle: RigPoint = [side * .17, .19 + lift, (footZ - .075) * (1 - seated) + .60 * seated]
+    // The shoe bottom is ~.073 below its origin; .078 keeps the outsole on
+    // the floor. The ankle meets the collar exactly .105 above the shoe.
+    const ankle: RigPoint = [side * .17, .183 + lift, (footZ - .075) * (1 - seated) + .60 * seated]
     const hip: RigPoint = [side * .165, 1.16 - seated * .4, -.04]
     // Solve the same two fixed-length bones for standing, walking and sitting.
     // Interpolating an arbitrary seated knee used to stretch the limbs.
@@ -76,12 +81,12 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
     // support phase rather than spinning the entire limb on every frame.
     // Only swing-phase shoes pitch: a planted sole must stay flat and avoid
     // clipping through the floor at heel/toe as the walk cycle changes.
-    shoePitch[index] = -Math.min(.06, lift * .55)
+    shoePitch[index] = -Math.min(.045, lift * .42)
     return {
       hip,
       knee: walkingKnee,
       ankle,
-      foot: [side * .17, .082 + lift, footZ * (1 - seated) + .675 * seated] as RigPoint,
+      foot: [side * .17, .078 + lift, footZ * (1 - seated) + .675 * seated] as RigPoint,
     }
   }) as [Leg, Leg]
   return {
