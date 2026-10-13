@@ -36,6 +36,7 @@ try {
     args: ['--no-sandbox', '--disable-extensions', '--enable-webgl', '--no-first-run', '--no-default-browser-check',
       ...(process.env.SOFTWARE_RENDER === '1' ? ['--use-gl=angle', '--use-angle=swiftshader'] : [])] })
   const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   await page.setViewport({ width: 1440, height: 960 })

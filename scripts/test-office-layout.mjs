@@ -2,11 +2,32 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { makeOfficeLayout } from '../src/scene/officeLayout.ts'
 import { DEFAULT_AGENTS, makeAgent, validateAgent, validStoredAgents } from '../server/agents.mjs'
-import { advanceMovement, CHAIR_Z, CHAIR_APPROACH_Z, createMovementState, makeWalkRoute, STAND_SIDE_X, STAND_Z, walkAt } from '../src/scene/officeMotion.ts'
+import { advanceMovement, CHAIR_Z, CHAIR_APPROACH_Z, createMovementState, STAND_SIDE_X, STAND_Z, walkAt } from '../src/scene/officeMotion.ts'
 import { makeAvatarRigPose } from '../src/scene/avatarRig.ts'
+import { departmentDecor } from '../src/scene/officeDecor.ts'
 import { DEFAULT_OFFICE_PREFERENCES, normalizeOfficePreferences } from '../src/scene/officePreferences.ts'
+import { layoutGeometryKey, routeForSeat, reconcileOfficeSimulation, stepOfficeSimulation } from '../src/scene/officeSimulation.ts'
 
 const departments = ['architecture', 'engineering', 'design', 'quality', 'research', 'operations', 'security', 'data', 'general']
+
+test('department furniture, noticeboards and planters remain disjoint and grounded in narrow pods', () => {
+  const overlaps = (a, b) => Math.abs(a.x - b.x) < (a.width + b.width) / 2 - .001 &&
+    Math.abs(a.y - b.y) < (a.height + b.height) / 2 - .001 && Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 - .001
+  for (const id of departments) for (const spacing of ['compact', 'regular', 'spacious']) {
+    const layout = makeOfficeLayout(makeTeam(10).map(agent => ({ ...agent, department: id })), spacing)
+    for (const sector of layout.sectors) {
+      const decor = departmentDecor(id, sector.width, sector.depth)
+      const boards = decor.boards.map(board => ({ x: board.x, y: board.y, z: board.z, width: board.w + .12, height: board.h + .12, depth: .18 }))
+      const objects = [...boards, ...decor.furniture, ...(decor.planter ? [decor.planter] : [])]
+      for (const item of decor.furniture) assert.ok(Math.abs(item.y - item.height / 2) < .001, 'standing furniture must touch the floor')
+      for (let a = 0; a < objects.length; a++) for (let b = a + 1; b < objects.length; b++) assert.equal(overlaps(objects[a], objects[b]), false, `${id}/${spacing} contextual props intersect`)
+      for (const seat of layout.seats.filter(seat => seat.sectorKey === sector.key)) {
+        const tabletop = { x: seat.position[0] - sector.center[0], y: .95, z: seat.position[2] - sector.center[2] - .22, width: 2.5, height: .16, depth: 1.32 }
+        for (const item of objects) assert.equal(overlaps(item, tabletop), false, `${id}/${spacing} decoration penetrates a workstation`)
+      }
+    }
+  }
+})
 
 test('avatar rig connects all limbs and aligns seated hands with mouse and keyboard', () => {
   for (const seated of [0, .25, .5, .75, 1]) {
@@ -95,11 +116,7 @@ function makeTeam(count) {
 }
 
 function routeFor(layout, seat, ordinal) {
-  const station = layout.amenities.find(amenity => amenity.id === 'coffee')
-  const aisleZ = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2)) + .3
-  const coffee = station ? { x: station.x, z: station.z, aisleZ } : undefined
-  const sector = layout.sectors.find(item => item.id === seat.sector)
-  return makeWalkRoute(seat, sector, ordinal, coffee)
+  return routeForSeat(layout, seat, ordinal).route
 }
 
 for (const spacing of ['compact', 'regular', 'spacious']) {
@@ -152,24 +169,26 @@ test('compact floor retains clear chair approaches, back-row walkways and scaled
     for (const spacing of ['compact', 'regular', 'spacious']) {
       const layout = makeOfficeLayout(makeTeam(count), spacing)
       const farthestBayEdge = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2))
-      const expected = count === 0 ? [] : count < 3 ? ['coffee'] : count < 25 ? ['meeting', 'coffee'] : ['meeting', 'coffee', 'focus']
-      assert.deepEqual(layout.amenities.map(amenity => amenity.id), expected)
+      assert.equal(layout.amenities.some(amenity => amenity.id === 'reception'), true)
+      assert.equal(layout.amenities.some(amenity => amenity.id === 'meeting'), count >= 3)
+      assert.equal(layout.amenities.filter(amenity => amenity.id === 'coffee').length,
+        new Set(layout.sectors.map(sector => sector.row)).size)
       if (layout.amenities.length) {
         const meeting = layout.amenities.find(amenity => amenity.id === 'meeting')
-        if (meeting) assert.ok(meeting.z - .55 - farthestBayEdge > .6, 'meeting table overlaps a team bay')
+        if (meeting) assert.ok(meeting.x + 2.2 < layout.spineX - .5, 'meeting furniture overlaps the circulation spine')
         const coffee = layout.amenities.find(amenity => amenity.id === 'coffee')
         if (coffee) assert.ok(coffee.z + .82 < layout.depth, 'coffee stop leaves the office floor')
         for (const amenity of layout.amenities) {
           assert.ok(amenity.x > 0 && amenity.x < layout.width)
           assert.ok(amenity.z < layout.depth)
         }
-      } else assert.ok(layout.depth - farthestBayEdge < 1.5, 'empty floor has an unused lounge strip')
+      } else assert.ok(layout.depth > farthestBayEdge)
       for (const seat of layout.seats) {
-        const sector = layout.sectors.find(item => item.id === seat.sector)
+        const sector = layout.sectors.find(item => item.key === seat.sectorKey)
         const ordinal = layout.seats.filter(item => item.sector === seat.sector).indexOf(seat)
         const route = routeFor(layout, seat, ordinal)
         const bayEnd = sector.center[2] + sector.depth / 2
-        assert.ok(bayEnd - route.points[3][1] > .75, 'rear route leaves the team bay')
+        assert.ok(route.points[3][1] - bayEnd > .4, 'exit route must reach the shared corridor beyond the bay')
         assert.ok(route.points[3][1] - (seat.position[2] + CHAIR_Z + .55) > .6,
           'rear walkway is too close to the last row of chairs')
       }
@@ -177,17 +196,18 @@ test('compact floor retains clear chair approaches, back-row walkways and scaled
   }
 })
 
-test('small department bays expand only to fit occupied desk columns', () => {
+test('corporate floor grows through bounded team pods with a real service wing', () => {
   for (const count of [1, 2, 3, 4, 20]) {
     const team = makeTeam(count).map(agent => ({ ...agent, department: 'engineering' }))
     const layout = makeOfficeLayout(team)
-    const columns = Math.min(3, count)
-    const expected = count <= 6 ? 4.65 + 3.46 * (columns - 1) : 5.15 + 3.62 * (columns - 1)
-    assert.ok(Math.abs(layout.width - expected) < .001)
+    assert.ok(layout.width >= 17, 'floor must include reception and circulation, not only desks')
+    assert.ok(layout.depth >= 13, 'support wing needs usable depth')
+    assert.ok(layout.sectors.every(sector => sector.count <= 9), 'large departments must branch into pods instead of an endless desk row')
     if (count <= 6) assert.equal(layout.sectors.length, 1, 'small teams must sit together')
     for (const seat of layout.seats) {
+      const sector = layout.sectors.find(item => item.key === seat.sectorKey)
       const left = seat.position[0] - 1.25, right = seat.position[0] + 1.25
-      assert.ok(left > 0 && right < layout.width, 'desk exceeds bay bounds')
+      assert.ok(left > sector.center[0] - sector.width / 2 && right < sector.center[0] + sector.width / 2, 'desk exceeds bay bounds')
     }
   }
 })
@@ -284,12 +304,10 @@ test('connecting corridors remain between rooms when one department is much larg
     name: `Builder ${index}`, role: 'Developer', specialty: 'Build', color: '#6474ab', department: 'architecture',
   }, `builder-${index}`))
   const layout = makeOfficeLayout([...team, ...large])
-  const first = layout.sectors[0]
-  const second = layout.sectors[1]
-  const passage = layout.passages[0]
-  for (const sector of [first, second]) {
-    assert.ok(passage.z > sector.center[2] - sector.depth / 2)
-    assert.ok(passage.z < sector.center[2] + sector.depth / 2)
+  for (const sector of layout.sectors) {
+    const coffee = layout.amenities.find(amenity => amenity.id === 'coffee' && amenity.row === sector.row)
+    assert.ok(coffee.aisleZ > sector.center[2] + sector.depth / 2, 'each pod needs an unobstructed exit to its wing corridor')
+    assert.ok(layout.passages.some(passage => Math.abs(passage.z - coffee.aisleZ) < .5))
   }
 })
 
@@ -301,9 +319,10 @@ for (const count of [0, 1, 2, 4, 10, 20, 50, 100, 1000]) {
     assert.deepEqual(layout.seats.map(seat => seat.agent.id).sort(), team.map(agent => agent.id).sort())
     const positions = layout.seats.map(seat => seat.position.join(','))
     assert.equal(new Set(positions).size, count)
-    assert.ok(layout.sectors.length >= 1 && layout.sectors.length <= departments.length)
+    assert.ok(layout.sectors.length >= 1 && layout.sectors.every(sector => sector.count <= 9))
+    assert.equal(new Set(layout.sectors.map(sector => sector.key)).size, layout.sectors.length)
     for (const seat of layout.seats) {
-      const sector = layout.sectors.find(area => area.id === seat.sector)
+      const sector = layout.sectors.find(area => area.key === seat.sectorKey)
       assert.ok(sector)
       assert.equal(seat.sector, count <= 6 ? 'general' : seat.agent.department)
       assert.ok(Math.abs(seat.position[0] - sector.center[0]) < sector.width / 2)
@@ -320,9 +339,76 @@ test('default legacy agents remain compatible with persisted history', () => {
   assert.equal(validStoredAgents([...DEFAULT_AGENTS, DEFAULT_AGENTS[0]]), false)
 })
 
+test('snapshot refresh preserves movement, and declarations of leadership only guide seating', () => {
+  const layout = makeOfficeLayout(DEFAULT_AGENTS)
+  assert.equal(layout.seats[0].agent.id, 'atlas')
+  assert.equal(layout.seats[0].placement, 'lead')
+  const original = reconcileOfficeSimulation(layout)
+  const ids = new Set(layout.seats.map(seat => seat.agent.id))
+  for (let i = 0; i < 700; i++) stepOfficeSimulation(original, ids, new Set(), .05, 'lively')
+  const refreshed = reconcileOfficeSimulation(makeOfficeLayout(DEFAULT_AGENTS.map(agent => ({ ...agent }))), original)
+  for (const [id, actor] of original) assert.equal(refreshed.get(id).state, actor.state, 'SSE refresh must not reset pose or position')
+})
+
+test('simultaneous idle routines reserve cafe wings, keep distance and release visits for tasks', () => {
+  const layout = makeOfficeLayout(makeTeam(20))
+  const simulation = reconcileOfficeSimulation(layout)
+  const ids = new Set(layout.seats.map(seat => seat.agent.id))
+  const visited = new Set()
+  for (let i = 0; i < 3600; i++) {
+    stepOfficeSimulation(simulation, ids, new Set(), .05, 'lively')
+    const occupied = new Set()
+    for (const [id, actor] of simulation) {
+      if (['walking', 'coffee', 'returning'].includes(actor.state.stage)) {
+        assert.equal(occupied.has(actor.resource), false, 'only one visit can occupy a shared kitchenette route')
+        occupied.add(actor.resource)
+      }
+      if (actor.state.stage === 'coffee') visited.add(id)
+      for (const [otherId, other] of simulation) if (otherId !== id) {
+        assert.ok(Math.hypot(actor.state.position[0] - other.state.position[0], actor.state.position[1] - other.state.position[1]) >= .72 - 1e-8, 'characters overlap during simultaneous movement')
+      }
+    }
+  }
+  assert.ok(visited.size >= 3, 'the queue should allow different agents to reach the cafe')
+  for (let i = 0; i < 2400; i++) stepOfficeSimulation(simulation, ids, ids, .05, 'lively')
+  assert.ok([...simulation.values()].every(actor => actor.state.stage === 'working'), 'new tasks must interrupt visits and return everyone to their desk')
+})
+
 test('agent editing rejects malformed input and malicious values', () => {
   assert.equal(validateAgent({ name: 'test', role: 'dev', specialty: 'code', color: '#abcdef', department: 'engineering' }), null)
   assert.ok(validateAgent({ name: '<script>\n', role: 'dev', specialty: 'code', color: '#abcdef', department: 'engineering' }))
   assert.ok(validateAgent({ name: 'ok', role: 'dev', specialty: 'code', color: 'red', department: 'engineering' }))
   assert.ok(validateAgent({ name: 'ok', role: 'dev', specialty: 'code', color: '#abcdef', department: 'admin' }))
+})
+
+test('geometry rebuilds are distinct from metadata snapshots and restore actual work poses', () => {
+  const original = makeOfficeLayout(DEFAULT_AGENTS)
+  const metadata = makeOfficeLayout(DEFAULT_AGENTS.map(agent => ({ ...agent, name: agent.name + ' updated', color: '#123456' })))
+  assert.equal(layoutGeometryKey(metadata), layoutGeometryKey(original), 'profile-only updates must not rebuild the office')
+  const changed = makeOfficeLayout(DEFAULT_AGENTS, 'spacious')
+  assert.notEqual(layoutGeometryKey(changed), layoutGeometryKey(original))
+  const latest = makeOfficeLayout(DEFAULT_AGENTS, 'compact')
+  assert.notEqual(layoutGeometryKey(latest), layoutGeometryKey(changed))
+  const actors = reconcileOfficeSimulation(original)
+  const held = reconcileOfficeSimulation(changed, actors)
+  for (const [id, actor] of actors) assert.equal(held.get(id).state, actor.state, 'the old scene stays intact until the transition completes')
+  const rebuilt = reconcileOfficeSimulation(latest, new Map(), new Set(['nova']))
+  assert.equal(rebuilt.get('nova').state.stage, 'working')
+  assert.equal(rebuilt.get('nova').state.seated, 1)
+  const seat = latest.seats.find(item => item.agent.id === 'nova')
+  assert.deepEqual(rebuilt.get('nova').state.position, [seat.position[0], seat.position[2] + CHAIR_Z])
+})
+
+test('distant actors finish tasks and chair transitions even after focus changes', () => {
+  const team = makeTeam(100), layout = makeOfficeLayout(team)
+  const simulation = reconcileOfficeSimulation(layout)
+  const hidden = layout.seats.at(-1).agent.id
+  const visible = new Set(layout.seats.slice(0, 50).map(seat => seat.agent.id))
+  for (let i = 0; i < 200; i++) stepOfficeSimulation(simulation, visible, new Set([hidden]), .05, 'off')
+  assert.equal(simulation.get(hidden).state.stage, 'working', 'a hidden active agent must actually approach and sit')
+  const state = simulation.get(hidden).state
+  stepOfficeSimulation(simulation, new Set([hidden]), new Set([hidden]), .05, 'off')
+  assert.deepEqual(simulation.get(hidden).state.position, state.position, 'changing detail selection must preserve location')
+  for (let i = 0; i < 200; i++) stepOfficeSimulation(simulation, visible, new Set(), .05, 'off')
+  assert.equal(simulation.get(hidden).state.stage, 'standing', 'hidden agents must rise after work ends')
 })

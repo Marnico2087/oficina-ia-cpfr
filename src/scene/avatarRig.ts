@@ -16,7 +16,7 @@ export type AvatarRigPose = {
 
 export function makeAvatarRigPose(seatedInput: number, walking: boolean | number, seconds: number,
   activity: 'idle' | 'thinking' | 'coding' | 'researching' | 'finishing' | 'celebrating' | 'error',
-  thinkingProgress = activity === 'thinking' ? 1 : 0, gaitPhase = seconds * 9, coffeeProgress = 0): AvatarRigPose {
+  thinkingProgress = activity === 'thinking' ? 1 : 0, gaitPhase = seconds * 9, coffeeProgress = 0, coffeeSeconds = seconds): AvatarRigPose {
   // Ease the body into and out of the chair so the hips and torso do not
   // stop or start at full speed. All joints share this same transition.
   const seatProgress = Math.max(0, Math.min(1, seatedInput))
@@ -25,7 +25,7 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
   const typing = seated > .94 && activity === 'coding'
   const thinking = seated * Math.max(0, Math.min(1, thinkingProgress))
   const coffee = Math.max(0, Math.min(1, coffeeProgress)) * (1 - seated) * (1 - stride)
-  const sip = .5 - .5 * Math.cos(seconds * 1.35)
+  const sip = .5 - .5 * Math.cos(coffeeSeconds * 1.35)
   const arms = [-1, 1].map(side => {
     const phase = Math.sin(gaitPhase + (side === 1 ? Math.PI : 0)) * stride
     // The workstation faces -Z, so its local +X mouse is on the avatar's -X.
@@ -49,9 +49,9 @@ export function makeAvatarRigPose(seatedInput: number, walking: boolean | number
       elbow: [side * (.44 + seated * .06) - contemplation * .04,
         elbowY + coffeeAmount * (1.43 - elbowY),
         elbowZ + coffeeAmount * (.20 - elbowZ)] as RigPoint,
-      wrist: [wristX - contemplation * .26 + coffeeAmount * (.34 - wristX + contemplation * .26),
-        wristY + coffeeAmount * (1.34 + sip * .26 - wristY),
-        wristZ + coffeeAmount * (.31 - sip * .06 - wristZ)] as RigPoint,
+      wrist: [wristX - contemplation * .26 + coffeeAmount * (.34 - sip * .25 - wristX + contemplation * .26),
+        wristY + coffeeAmount * (1.34 + sip * .395 - wristY),
+        wristZ + coffeeAmount * (.31 - sip * .15 - wristZ)] as RigPoint,
     }
   }) as [Arm, Arm]
   const shoePitch: [number, number] = [0, 0]

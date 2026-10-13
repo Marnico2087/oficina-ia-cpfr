@@ -7,22 +7,25 @@ import type { AgentPose } from './agentBehavior'
 import { makeAvatarRigPose, type RigPoint } from './avatarRig'
 
 const UP = new Vector3(0, 1, 0)
+const BONE_START = new Vector3()
+const BONE_DIRECTION = new Vector3()
 
 // Every animated limb is a continuous joint-to-joint bone. Connecting the
 // segments to the same elbow/knee coordinates prevents floating hands and gaps.
 function fitBone(mesh: Mesh | undefined, start: RigPoint, end: RigPoint) {
   if (!mesh) return
-  const a = new Vector3(...start)
-  const direction = new Vector3(...end).sub(a)
+  const a = BONE_START.set(...start)
+  const direction = BONE_DIRECTION.set(...end).sub(a)
   const length = direction.length()
   mesh.position.copy(a.addScaledVector(direction, .5))
   mesh.quaternion.setFromUnitVectors(UP, direction.normalize())
   mesh.scale.y = length
 }
 
-export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef, seatedRef, coffeeRef }: {
+export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef, seatedRef, coffeeRef, animate = true }: {
   agent: OfficeAgent; pose: AgentPose; selected: boolean; onSelect: () => void
   walkRef: RefObject<number>; gaitRef: RefObject<number>; seatedRef: RefObject<number>; coffeeRef: RefObject<boolean>
+  animate?: boolean
 }) {
   const model = useRef<Group>(null)
   const torso = useRef<Group>(null)
@@ -38,21 +41,24 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
   const halo = useRef<Mesh>(null)
   const coffeeCup = useRef<Group>(null)
   const coffeeBlend = useRef(0)
+  const coffeeTime = useRef(0)
   const thinkingBlend = useRef(0)
   const walkBlend = useRef(0)
   const skin = agent.id === 'sentinel' ? '#c48c70' : agent.id === 'pixel' ? '#efc8ab' : '#dbad8c'
   const hair = agent.id === 'nova' ? '#2b4058' : agent.id === 'pixel' ? '#894f47' : agent.id === 'sentinel' ? '#41332f' : '#282b43'
 
   useFrame(({ clock }, delta) => {
-    const t = clock.elapsedTime
+    const t = animate ? clock.elapsedTime : 0
     thinkingBlend.current = MathUtils.damp(thinkingBlend.current, pose === 'thinking' ? 1 : 0, 4, Math.min(delta, .05))
     walkBlend.current = MathUtils.damp(walkBlend.current, walkRef.current, 8, Math.min(delta, .05))
     coffeeBlend.current = MathUtils.damp(coffeeBlend.current, coffeeRef.current ? 1 : 0, 5, Math.min(delta, .05))
-    if (coffeeCup.current) coffeeCup.current.visible = coffeeBlend.current > .2
-    const rig = makeAvatarRigPose(seatedRef.current, walkBlend.current, t, pose, thinkingBlend.current, gaitRef.current, coffeeBlend.current)
-    if (model.current) model.current.position.y = rig.bob + (pose === 'celebrating' && seatedRef.current < .01 ? Math.abs(Math.sin(t * 5)) * .035 : 0)
+    coffeeTime.current = coffeeRef.current ? coffeeTime.current + Math.min(delta, .05) : 0
+    if (coffeeCup.current) { coffeeCup.current.visible = coffeeBlend.current > .2; coffeeCup.current.rotation.x = -.18 * (.5 - .5 * Math.cos(coffeeTime.current * 1.35)) }
+    const rig = makeAvatarRigPose(seatedRef.current, walkBlend.current, t, pose, thinkingBlend.current, gaitRef.current, coffeeBlend.current, coffeeTime.current)
+    // Breathing moves the upper body, never lifts the planted shoes off the floor.
+    if (model.current) model.current.position.y = 0
     if (torso.current) {
-      torso.current.position.y = -rig.torsoDrop
+      torso.current.position.y = -rig.torsoDrop + rig.bob
       torso.current.rotation.x = MathUtils.damp(torso.current.rotation.x, pose === 'error' ? .1 : 0, 7, Math.min(delta, .05))
     }
     if (head.current) {

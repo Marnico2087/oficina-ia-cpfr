@@ -1,5 +1,23 @@
-import { existsSync } from 'node:fs'
-import { delimiter, dirname, isAbsolute, join, sep } from 'node:path'
+import { accessSync, constants, statSync } from 'node:fs'
+import { delimiter, dirname, isAbsolute, join, relative, resolve, sep, win32 } from 'node:path'
+
+function usableFile(path, platform) {
+  try {
+    if (!statSync(path).isFile()) return false
+    if (platform !== 'win32' && !/\.[cm]?js$/i.test(path)) accessSync(path, constants.X_OK)
+    return true
+  } catch { return false }
+}
+
+function directEntry(bin, id, platform) {
+  if (!usableFile(bin, platform)) return null
+  if (!/\.(cmd|bat)$/i.test(bin)) return usableFile(bin, platform) ? bin : null
+  const entries = id === 'claude'
+    ? [join('@anthropic-ai', 'claude-code', 'bin', 'claude.exe'), join('@anthropic-ai', 'claude-code', 'cli.js')]
+    : id === 'gemini' ? [join('@google', 'gemini-cli', 'dist', 'index.js')]
+      : [join('@openai', 'codex', 'bin', 'codex.js')]
+  return entries.map(entry => join(dirname(bin), 'node_modules', entry)).find(path => usableFile(path, platform)) || null
+}
 
 export const PROVIDERS = [
   { id: 'codex', name: 'Codex CLI', env: 'CODEX_BIN' },
@@ -11,7 +29,7 @@ export function discoverProviders(env = process.env, platform = process.platform
   const folders = (env.PATH || env.Path || '').split(delimiter).filter(Boolean)
   return PROVIDERS.map(provider => {
     const configured = env[provider.env]
-    let bin = configured && isAbsolute(configured) && existsSync(configured) ? configured : null
+    let bin = configured && isAbsolute(configured) ? directEntry(configured, provider.id, platform) : null
     if (!configured) {
       const names = platform === 'win32'
         ? [`${provider.id}.exe`, `${provider.id}.cmd`]
@@ -19,22 +37,12 @@ export function discoverProviders(env = process.env, platform = process.platform
       for (const folder of folders) {
         for (const name of names) {
           const candidate = join(folder, name)
-          if (existsSync(candidate)) { bin = candidate; break }
+          // A broken shim in an earlier PATH entry must not hide a working CLI.
+          bin = directEntry(candidate, provider.id, platform)
+          if (bin) break
         }
         if (bin) break
       }
-    }
-    // Recent Claude Code npm shims delegate to a native executable.
-    // Prefer it on Windows so Node can spawn without a shell.
-    if (bin?.toLowerCase().endsWith('.cmd')) {
-      const relative = provider.id === 'claude'
-        ? join('@anthropic-ai', 'claude-code', 'bin', 'claude.exe')
-        : provider.id === 'gemini'
-          ? join('@google', 'gemini-cli', 'dist', 'index.js')
-          : join('@openai', 'codex', 'bin', 'codex.js')
-      const direct = join(dirname(bin), 'node_modules', relative)
-      if (existsSync(direct)) bin = direct
-      else bin = null // Avoid a cmd.exe shell for paths supplied by task requests.
     }
     return { id: provider.id, name: provider.name, available: Boolean(bin), bin }
   })
@@ -48,8 +56,20 @@ export function launchArgs(id, workspace) {
 }
 
 export function foldersOverlap(left, right, platform = process.platform) {
-  const normalize = path => platform === 'win32' ? path.toLowerCase() : path
-  const a = normalize(left)
-  const b = normalize(right)
-  return a === b || a.startsWith(b + sep) || b.startsWith(a + sep)
+  const paths = platform === 'win32' ? win32 : { resolve, relative, isAbsolute, sep }
+  const normalize = path => platform === 'win32' ? paths.resolve(path).toLowerCase() : paths.resolve(path)
+  const a = normalize(left), b = normalize(right)
+  const inside = (parent, child) => {
+    const remainder = paths.relative(parent, child)
+    return !remainder || (!paths.isAbsolute(remainder) && remainder !== '..' && !remainder.startsWith('..' + paths.sep))
+  }
+  return inside(a, b) || inside(b, a)
+}
+
+export function providerCommand(provider, workspace, prompt) {
+  const args = launchArgs(provider.id, workspace)
+  if (provider.id === 'gemini') args.splice(1, 0, prompt)
+  const script = /\.[cm]?js$/i.test(provider.bin)
+  return { command: script ? process.execPath : provider.bin, args: script ? [provider.bin, ...args] : args,
+    input: provider.id === 'gemini' ? '' : prompt }
 }

@@ -27,11 +27,12 @@ test('missing, corrupt or future timestamps do not show fake completion', () => 
   }
 })
 
-test('fresh completion is visible before resuming another running task', () => {
+test('current work outranks a terminal reaction from an earlier task', () => {
   const running = { id: 'running', agentId: 'nova', status: 'running', phase: 'coding', updatedAt: new Date(now - 2_000).toISOString() }
   const complete = { id: 'complete', agentId: 'nova', status: 'completed', phase: 'idle', finishedAt, updatedAt: finishedAt }
   const unrelated = { ...running, agentId: 'atlas' }
-  assert.equal(selectAgentTask([running, unrelated, complete], 'nova', now)?.id, 'complete')
+  assert.equal(selectAgentTask([running, unrelated, complete], 'nova', now)?.id, 'running')
+  assert.equal(selectAgentTask([complete], 'nova', now)?.id, 'complete')
   assert.equal(selectAgentTask([running, complete], 'nova', now + TERMINAL_POSE_MS)?.id, 'running')
   assert.equal(selectAgentTask([unrelated], 'nova', now), undefined)
 })

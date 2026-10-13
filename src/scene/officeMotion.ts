@@ -3,7 +3,7 @@ import type { OfficeMotion } from './officePreferences'
 
 export type Point = [number, number]
 export type Route = { points: Point[]; durations: number[]; total: number; breakIndex: number; breakStage: 'coffee' | 'resting' }
-export type CoffeeStop = { x: number; z: number; aisleZ: number }
+export type CoffeeStop = { x: number; z: number; aisleZ: number; spineX?: number; key?: string }
 export const CHAIR_Z = .94
 export const STAND_Z = 1.18
 export const STAND_SIDE_X = .98
@@ -19,15 +19,15 @@ export function makeWalkRoute(seat: Seat, sector: Sector, slot: number, coffee?:
   const leftEdge = sector.center[0] - sector.width / 2
   // Compact shared rooms have a narrower left margin than department bays.
   // Keep the avatar's shoulders outside the adjacent workstation footprint.
-  const sideAisle = leftEdge + (sector.id === 'general' && sector.width <= 14 ? .42 : .62)
-  const front = sector.center[2] + sector.depth / 2 - .88
+  const sideAisle = leftEdge + .55
+  const front = coffee?.aisleZ ?? sector.center[2] + sector.depth / 2 - .88
   const loungeX = leftEdge + 1.2 + (slot % 3) * .65
   const points: Point[] = coffee ? [
     [x + STAND_SIDE_X, z + STAND_Z], [x + STAND_SIDE_X, z + AISLE_Z], [sideAisle, z + AISLE_Z], [sideAisle, front],
-    [sideAisle, coffee.aisleZ], [coffee.x + (slot % 3 - 1) * .75, coffee.aisleZ],
-    [coffee.x + (slot % 3 - 1) * .75, coffee.z + .82],
-    [coffee.x + (slot % 3 - 1) * .75, coffee.aisleZ], [sideAisle, coffee.aisleZ], [sideAisle, front],
-    [sideAisle, z + AISLE_Z], [x + STAND_SIDE_X, z + AISLE_Z], [x + STAND_SIDE_X, z + STAND_Z],
+    [coffee.spineX ?? sideAisle, front], [coffee.spineX ?? sideAisle, coffee.z + .98],
+    [coffee.x, coffee.z + .98],
+    [coffee.spineX ?? sideAisle, coffee.z + .98], [coffee.spineX ?? sideAisle, front + .9], [leftEdge - .55, front + .9],
+    [leftEdge - .55, z + AISLE_Z], [x + STAND_SIDE_X, z + AISLE_Z], [x + STAND_SIDE_X, z + STAND_Z],
   ] : [
     [x + STAND_SIDE_X, z + STAND_Z], [x + STAND_SIDE_X, z + AISLE_Z], [sideAisle, z + AISLE_Z], [sideAisle, front],
     [loungeX, front], [sideAisle, front], [sideAisle, z + AISLE_Z], [x + STAND_SIDE_X, z + AISLE_Z], [x + STAND_SIDE_X, z + STAND_Z],
@@ -82,7 +82,7 @@ export function createMovementState(route: Route): MovementState {
 // While returning, the agent retraces the aisle network instead of cutting
 // diagonally through chairs or desks. All pose transitions advance by delta.
 export function advanceMovement(state: MovementState, route: Route, dt: number, active: boolean,
-  motion: OfficeMotion, ordinal: number): MovementState {
+  motion: OfficeMotion, ordinal: number, canDepart = true): MovementState {
   const next: MovementState = { ...state, position: [...state.position], waypoints: [...state.waypoints] }
   const step = Math.min(Math.max(0, dt), .05)
   const home = route.points[0]
@@ -142,7 +142,7 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
     if (!active && motion !== 'off') {
       next.idleTime += step * (motion === 'subtle' ? .45 : 1)
       // Spread visits over time so a large team does not crowd the compact counter.
-      if (next.idleTime > 12 + (ordinal * 7 % 31)) {
+      if (canDepart && next.idleTime > 12 + (ordinal * 7 % 31)) {
         next.stage = 'walking'
         next.cursor = 1
       }

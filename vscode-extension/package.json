@@ -2,28 +2,60 @@
   "name": "agent-office-vscode",
   "displayName": "Agent Office 3D",
   "description": "Open your local AI agents' 3D office inside VS Code for the current workspace.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "Munizada",
   "license": "MIT",
-  "engines": { "vscode": "^1.92.0" },
-  "categories": ["Visualization", "Other"],
-  "keywords": ["codex", "claude", "gemini", "agents", "office", "3d"],
-  "activationEvents": ["onCommand:agent-office.open"],
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "codex",
+    "claude",
+    "gemini",
+    "agents",
+    "office",
+    "3d"
+  ],
+  "activationEvents": [
+    "onCommand:agent-office.open"
+  ],
   "main": "./extension.cjs",
-  "files": ["extension.cjs", "runtime.cjs", "README.md", "LICENSE"],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
+  "files": [
+    "extension.cjs",
+    "runtime.cjs",
+    "README.md",
+    "LICENSE"
+  ],
   "contributes": {
     "commands": [
-      { "command": "agent-office.open", "title": "Agent Office: Open 3D Office", "category": "Agent Office" }
+      {
+        "command": "agent-office.open",
+        "title": "Agent Office: Open 3D Office",
+        "category": "Agent Office"
+      }
     ],
     "configuration": {
       "title": "Agent Office",
       "properties": {
         "agentOffice.command": {
-          "type": "string", "default": "agent-office",
+          "type": "string",
+          "default": "agent-office",
           "description": "Command or absolute executable path to the globally installed Agent Office CLI."
         }
       }
     }
   },
-  "repository": { "type": "git", "url": "https://github.com/Munizada/agent-office.git" }
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Munizada/agent-office.git"
+  }
 }

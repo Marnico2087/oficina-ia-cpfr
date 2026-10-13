@@ -4,6 +4,8 @@ import type { AgentId, ProviderId, ProviderInfo } from '../types';
 import { useAgents } from '../agents';
 import { useLanguage } from '../locales/i18n';
 import { Avatar } from './Avatar';
+import { Modal } from './Modal';
+import { isAbsoluteWorkspace } from './dataFlow';
 
 const defaultProviders: ProviderInfo[] = [
   { id: 'codex', name: 'Codex CLI', available: false },
@@ -11,7 +13,7 @@ const defaultProviders: ProviderInfo[] = [
   { id: 'gemini', name: 'Gemini CLI', available: false },
 ];
 
-export function NewTask({ agent, setAgent, workspace, setWorkspace, close, start, busy, demo, provider, setProvider, providers }: {
+export function NewTask({ agent, setAgent, workspace, setWorkspace, close, start, busy, demo, provider, setProvider, providers, online, agentBusy, error }: {
   agent: AgentId;
   setAgent: (a: AgentId) => void;
   workspace: string;
@@ -23,24 +25,30 @@ export function NewTask({ agent, setAgent, workspace, setWorkspace, close, start
   provider: ProviderId;
   setProvider: (p: ProviderId) => void;
   providers: ProviderInfo[];
+  online: boolean;
+  agentBusy: boolean;
+  error: string;
 }) {
   const { t: tr } = useLanguage();
   const agents = useAgents();
   const [prompt, setPrompt] = useState('');
   const options = providers.length ? providers : defaultProviders;
-  const available = demo || options.some(item => item.id === provider && item.available);
+  const blocked = demo ? '' : !online ? 'API OFFLINE' : !options.some(item => item.available) ? 'No AI provider is available.'
+    : !options.some(item => item.id === provider && item.available) ? 'Choose an available AI provider.'
+    : agentBusy ? 'Agent is already working.' : !isAbsoluteWorkspace(workspace) ? 'Enter an absolute project path.' : '';
 
-  return <div className="modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
-    <div className="modal" role="dialog" aria-modal="true" aria-labelledby="new-mission">
+  return <Modal close={close} busy={busy} labelledBy="new-mission">
+    <form onSubmit={event => { event.preventDefault(); if (!busy && !blocked && prompt.trim() && agents.some(item => item.id === agent)) start(prompt); }}>
       <div className="modal-title">
         <div><span className="eyebrow"><span /> {tr('A NEW MISSION')}</span><h2 id="new-mission">{tr('Create a task')} <b>✳</b></h2></div>
-        <button onClick={close} aria-label={tr('Close')}><X size={19}/></button>
+        <button type="button" onClick={close} disabled={busy} aria-label={tr('Close')}><X size={19}/></button>
       </div>
+      <fieldset disabled={busy}>
       <label htmlFor="prompt">{tr('WHAT DO YOU WANT TO BUILD?')}</label>
-      <textarea id="prompt" maxLength={10000} autoFocus rows={5} placeholder={tr('Example: Analyze this project, identify performance bottlenecks and improve them...')} value={prompt} onChange={event => setPrompt(event.target.value)}/>
-      <label>{tr('ASSIGN TO')}</label>
-      <div className="modal-agent-list">
-        {agents.map(item => <button key={item.id} className={agent === item.id ? 'selected' : ''} onClick={() => setAgent(item.id)}>
+      <textarea id="prompt" maxLength={10000} required data-autofocus rows={5} placeholder={tr('Example: Analyze this project, identify performance bottlenecks and improve them...')} value={prompt} onChange={event => setPrompt(event.target.value)} aria-describedby={error ? 'task-error' : undefined}/>
+      <span id="assign-to" className="field-label">{tr('ASSIGN TO')}</span>
+      <div className="modal-agent-list" role="group" aria-labelledby="assign-to">
+        {agents.map(item => <button type="button" aria-pressed={agent === item.id} key={item.id} className={agent === item.id ? 'selected' : ''} onClick={() => setAgent(item.id)}>
           <Avatar id={item.id} size="sm"/>{item.name}{agent === item.id && <Check size={14}/>}
         </button>)}
       </div>
@@ -51,13 +59,16 @@ export function NewTask({ agent, setAgent, workspace, setWorkspace, close, start
         </option>)}
       </select>
       {!import.meta.env.MODE.includes('public-demo') && <><label htmlFor="mission-dir">{tr('PROJECT DIRECTORY')}</label>
-      <input id="mission-dir" value={workspace} onChange={event => setWorkspace(event.target.value)} placeholder={tr('Absolute project path')} disabled={demo}/></>}
+      <input id="mission-dir" maxLength={1000} value={workspace} onChange={event => setWorkspace(event.target.value)} placeholder={tr('Absolute project path')} disabled={demo}/></>}
+      </fieldset>
+      {blocked && <p id="task-blocked" className="form-error" role="status">{tr(blocked)}</p>}
+      {error && <p id="task-error" className="form-error" role="alert">{error}</p>}
       <div className="modal-bottom">
         <span><ShieldCheck size={15}/>{demo ? tr('Preview only · no real execution') : tr('Runs locally with selected CLI')}</span>
-        <button className="primary-btn" disabled={!prompt.trim() || busy || !available} onClick={() => start(prompt)}>
+        <button type="submit" className="primary-btn" disabled={!prompt.trim() || busy || Boolean(blocked) || !agents.some(item => item.id === agent)} aria-describedby={blocked ? 'task-blocked' : undefined}>
           {busy ? tr('Starting...') : tr('Launch task')} <ArrowRight size={17}/>
         </button>
       </div>
-    </div>
-  </div>;
+    </form>
+  </Modal>;
 }

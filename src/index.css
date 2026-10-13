@@ -119,3 +119,76 @@ footer{padding:20px 37px;display:flex;justify-content:space-between;gap:10px;bor
 .ops .feed-list{grid-column:2;grid-row:3}
 .ops .execution-inspector{grid-column:1/-1;grid-row:4;margin-top:0}
 }
+
+/* Functional accessibility and overflow fixes; the office's visual design stays in the scene. */
+button,input,textarea,select{font:inherit}
+select:focus-visible{outline:3px solid #9a96f2;outline-offset:2px}
+.skip-link{position:fixed;inset-block-start:8px;inset-inline-start:8px;z-index:100;padding:12px;background:#17253c;color:white;border-radius:8px;transform:translateY(-150%)}
+.skip-link:focus{transform:none}
+.modal-dialog{border:0;padding:25px;margin:0;inset:0;width:100%;max-width:none;height:100dvh;max-height:none;background:transparent;color:#202a42;overflow:auto}
+.modal-dialog[open]{display:grid;place-items:center}
+.modal-dialog::backdrop{background:#0e18319c;backdrop-filter:blur(5px)}
+.modal-dialog .modal{max-height:calc(100dvh - 50px);margin:auto}
+.modal fieldset{border:0;margin:0;padding:0;min-width:0}
+.modal input:not([type=color]){width:100%;padding:13px 14px;border:1px solid #e2e6ee;border-radius:9px;background:#fafbfe;color:#27324b;font-size:12px}
+.field-label{display:block;font-size:10px;font-weight:800;letter-spacing:.65px;color:#667286;margin-bottom:9px}
+.form-error{color:#9c3045;background:#fff2f3;border:1px solid #efd1d7;padding:10px;border-radius:8px;font-size:12px;line-height:1.5;margin-top:12px;overflow-wrap:anywhere}
+.connection-message{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;margin-bottom:20px;border:1px solid #f0d8b1;background:#fff5e7;color:#73501f;border-radius:9px;font-size:12px;line-height:1.5}
+.connection-message button{flex:none;background:#fff;color:#73501f;border:1px solid #dabf98;border-radius:6px;padding:8px}
+.toast{max-width:calc(100vw - 30px);overflow-wrap:anywhere}
+.toast-error>svg{color:#ffb1bc}
+.toast-info>svg{color:#aacfff}
+.toast>svg,.toast>button{flex:none}
+.toast button{min-width:28px;min-height:28px}
+.stat strong.stat-word{white-space:normal}
+.crew-meta strong,.agent-card h2,.inspector-person strong,.detail-top h3,.timeline span,.failure,.modal-agent-list button{overflow-wrap:anywhere}
+.inspector-person>div{min-width:0}
+.timeline span{min-width:0}
+.task-tile-top{flex-wrap:wrap}
+.task-tile-top>span:first-child{min-width:0;overflow-wrap:anywhere}
+.agent-card-foot{flex-wrap:wrap}
+.task-filters>div:last-child{flex-wrap:wrap}
+.search-box,.search-box input{min-width:0}
+.search-box input{flex:1}
+.sub-intro h1{overflow-wrap:anywhere}
+/* Small text needs readable contrast on the existing light surfaces. */
+.intro p,.sub-intro p,.stat>div,.stat>span,.stat strong small,.section-head p,.crew-header p,.crew-header>span,.crew-meta small,.crew-meta>span,.inspector-top small,.inspector-person div span,.agent-inspector>p,.inspector-status,.feed-head,.task-tile-bottom,.ops-foot,.detail-top>div>span,.detail-top small,.timeline time,.agent-card>p,.agent-card-foot,.setting-heading p,.setting-card>p,.setting-row span,.modal-bottom>span,.execution-stats span,.execution-times,.execution-log time,.execution-log-title small,.execution-empty,.execution-no-events,.empty-state,.topbar-actions time,footer{color:#59697f}
+.primary-btn,.assign-btn,.task-filters button.on{background:#6b60d8}
+.eyebrow,.agent-role{color:#6658ab}
+.pill-status{color:#55647a}
+.pill-status.running,.pill-status.completed,.stream-badge,.api-badge.on,.mode-btn.live{color:#226847}
+.pill-status.failed,.pill-status.cancelled,.pill-status.interrupted{color:#a23850}
+.mode-btn.demo{color:#855619}
+.setting-ready.yes{color:#226847!important}
+.setting-ready:not(.yes){color:#974c43!important}
+:root[dir="rtl"] .page-content,:root[dir="rtl"] .sidebar,:root[dir="rtl"] .modal,:root[dir="rtl"] .crumb{direction:rtl}
+:root[dir="rtl"] .nav-item,:root[dir="rtl"] .side-team>button,:root[dir="rtl"] .crew-card,:root[dir="rtl"] .task-tile{text-align:start}
+:root[dir="rtl"] .nav-dot{right:auto;left:12px}
+@media(max-width:740px){
+  .modal-dialog{padding:15px}
+  .modal-dialog .modal{max-height:calc(100dvh - 30px)}
+  .topbar{height:auto;min-height:58px;padding-block:8px}
+  .crumb{min-width:0;white-space:normal;flex-wrap:wrap;overflow-wrap:anywhere}
+  .mode-btn{white-space:normal;flex:none;max-width:120px}
+  .crew-header>span{flex:none}
+  .detail-task{padding:15px}
+  .detail-top{flex-wrap:wrap}
+  .detail-top>div{flex-basis:calc(100% - 52px)}
+  .timeline,.cancel-task,.failure{margin-inline-start:0}
+  .task-filters>div:last-child{overflow-x:visible}
+}
+@media(max-width:420px){
+  .sidebar{padding:10px 8px;gap:4px}
+  .brand{gap:6px}
+  .brand strong{font-size:14px}
+  .brand-logo{width:26px;height:30px}
+  .sidebar nav{gap:2px}
+  .nav-item,.sidebar .settings-nav{width:32px;height:36px}
+  .team-intro{flex-wrap:wrap}
+  .section-head,.crew-header{flex-wrap:wrap}
+}
+.office-3d-shell canvas,.office-3d-shell .scene-phase-overlay{transition:opacity .18s ease}
+.office-3d-shell[data-layout-transition="closing"] canvas,.office-3d-shell[data-layout-transition="closing"] .scene-phase-overlay{opacity:0;pointer-events:none}
+.scene-layout-loading{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#526581;font-size:13px;z-index:2}
+@media(prefers-reduced-motion:reduce){.office-3d-shell canvas,.office-3d-shell .scene-phase-overlay{transition:none}}
+@media(max-width:740px){.topbar-actions{flex-shrink:0}.crumb{flex:1}}

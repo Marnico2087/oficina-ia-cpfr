@@ -5,6 +5,11 @@ export const AgentsContext = createContext<OfficeAgent[]>(DEFAULT_AGENTS)
 export const useAgents = () => useContext(AgentsContext)
 export const useAgent = (id: string) => useAgents().find(agent => agent.id === id)
 
+/** Only bundled profile text is UI copy; visitor-authored profiles stay verbatim. */
+export function displayAgentText(agent: OfficeAgent, field: 'role' | 'specialty', translate: (text: string) => string) {
+  return DEFAULT_AGENTS.some(original => original.id === agent.id && original[field] === agent[field]) ? translate(agent[field]) : agent[field]
+}
+
 export const DEPARTMENTS = [
   { id: 'architecture', name: 'Architecture & planning', color: '#9b91ff' },
   { id: 'engineering', name: 'Engineering lab', color: '#51c5ec' },

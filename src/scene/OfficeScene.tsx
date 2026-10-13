@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, OrthographicCamera, RoundedBox } from '@react-three/drei'
-import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { Group, Mesh } from 'three'
 import { MathUtils, Vector3 } from 'three'
 import { type AgentId, type OfficeTask } from '../types'
@@ -9,7 +9,8 @@ import { OfficeCampus } from './OfficeCampus'
 import { OfficeAvatar } from './OfficeAvatar'
 import { OfficeCrowdLOD } from './OfficeCrowdLOD'
 import { makeOfficeLayout, type OfficeLayout, type Seat } from './officeLayout'
-import { advanceMovement, CHAIR_Z, createMovementState, makeWalkRoute, STAND_Z, type CoffeeStop } from './officeMotion'
+import { CHAIR_Z, STAND_Z } from './officeMotion'
+import { layoutGeometryKey, reconcileOfficeSimulation, stepOfficeSimulation, type OfficeSimulation } from './officeSimulation'
 import { useOfficePreferences } from './OfficePreferencesContext'
 import type { OfficePreferences } from './officePreferences'
 import { useLanguage } from '../locales/i18n'
@@ -53,8 +54,31 @@ function BadgeProjector({ overlayId, seats, sectors, avatars }: { overlayId: str
         place(seat.agent.id, point.current.x, point.current.y + 2.28, point.current.z)
       }
     }
-    for (const sector of sectors) place(`sector:${sector.id}`, sector.center[0], 3.9, sector.center[2] - sector.depth / 2 + .3)
+    for (const sector of sectors) place(`sector:${sector.key}`, sector.center[0], 3.9, sector.center[2] - sector.depth / 2 + .3)
   })
+  return null
+}
+
+function FollowSelected({ selected, overview, avatars, center }: { selected: string; overview: boolean; avatars: RefObject<Map<string, Group>>; center: [number, number, number] }) {
+  const previous = useRef<Vector3 | null>(null)
+  const tracked = useRef('')
+  const world = useRef(new Vector3())
+  useFrame(({ camera, controls }) => {
+    if (overview) { previous.current = null; tracked.current = ''; return }
+    const avatar = avatars.current.get(selected)
+    const orbit = controls as unknown as { target: Vector3; update: () => void } | undefined
+    if (!avatar || !orbit) return
+    avatar.getWorldPosition(world.current)
+    if (tracked.current !== selected || !previous.current) {
+      tracked.current = selected
+      previous.current = new Vector3(center[0], 0, center[2])
+    }
+    const dx = world.current.x - previous.current.x, dz = world.current.z - previous.current.z
+    camera.position.x += dx; camera.position.z += dz
+    orbit.target.x += dx; orbit.target.z += dz
+    previous.current.copy(world.current)
+    orbit.update()
+  }, -.5)
   return null
 }
 
@@ -66,11 +90,11 @@ function Desk({ color, active, theme }: { color: string; active: boolean; theme:
   return <group>
     {/* One workstation is a complete, grounded furniture cluster. The low
         carpet defines each desk without blocking a neighbouring aisle. */}
-    <mesh position={[0, -.037, .23]} receiveShadow>
-      <boxGeometry args={[2.96, .028, 2.83]}/>
+    <mesh position={[0, .003, .23]} receiveShadow>
+      <boxGeometry args={[2.96, .006, 2.83]}/>
       <meshStandardMaterial color={theme === 'midnight' ? '#405264' : theme === 'warm' ? '#dfd2c6' : '#cedce7'} roughness={1}/>
     </mesh>
-    <mesh position={[0, -.019, 1.57]}>
+    <mesh position={[0, .008, 1.57]}>
       <boxGeometry args={[2.85, .008, .055]}/><meshStandardMaterial color={color} roughness={.93}/>
     </mesh>
     {/* Chair faces the near edge of the desk, with the backrest behind the worker. */}
@@ -124,14 +148,10 @@ function Desk({ color, active, theme }: { color: string; active: boolean; theme:
   </group>
 }
 
-function Workstation({ seat, sector, ordinal, coffeeStop, selected, pose, onSelect, preferences, avatars }: {
-  seat: Seat; sector: OfficeLayout['sectors'][number]; ordinal: number; coffeeStop?: CoffeeStop; selected: boolean; pose: AgentPose; onSelect: () => void; preferences: OfficePreferences; avatars: RefObject<Map<string, Group>>
+function Workstation({ seat, simulation, selected, pose, active, onSelect, preferences, avatars }: {
+  seat: Seat; simulation: RefObject<OfficeSimulation>; selected: boolean; pose: AgentPose; active: boolean; onSelect: () => void; preferences: OfficePreferences; avatars: RefObject<Map<string, Group>>
 }) {
   const { agent, position } = seat
-  const working = pose === 'thinking' || pose === 'coding' || pose === 'researching' || pose === 'finishing'
-  const route = useMemo(() => makeWalkRoute(seat, sector, ordinal, coffeeStop), [seat, sector, ordinal, coffeeStop])
-  const movement = useRef(createMovementState(route))
-  useEffect(() => { movement.current = createMovementState(route) }, [route])
   const traveler = useRef<Group>(null)
   const walkRef = useRef(0)
   const gaitRef = useRef(0)
@@ -139,16 +159,13 @@ function Workstation({ seat, sector, ordinal, coffeeStop, selected, pose, onSele
   const coffeeRef = useRef(false)
   useFrame((_, delta) => {
     if (!traveler.current) return
-    const previousPosition = movement.current.position
-    const frame = advanceMovement(movement.current, route, delta, working, preferences.motion, ordinal)
-    movement.current = frame
+    const actor = simulation.current.get(agent.id)
+    if (!actor) return
+    const frame = actor.state
     traveler.current.userData.movementStage = frame.stage
     traveler.current.userData.coffeeBreak = frame.stage === 'coffee'
     traveler.current.userData.walking = frame.walking
-    if (frame.walking) {
-      const distance = Math.hypot(frame.position[0] - previousPosition[0], frame.position[1] - previousPosition[1])
-      gaitRef.current += distance * (Math.PI * 2 / 1.2)
-    }
+    gaitRef.current = actor.gait
     const smoothing = Math.min(delta, .05)
     traveler.current.position.x = frame.position[0] - position[0]
     traveler.current.position.z = frame.position[1] - position[2]
@@ -157,11 +174,11 @@ function Workstation({ seat, sector, ordinal, coffeeStop, selected, pose, onSele
     walkRef.current = frame.walking ? 1 : 0
     seatedRef.current = frame.seated
     coffeeRef.current = frame.stage === 'coffee'
-  })
+  }, -.75)
   return <group position={position}>
-    <Desk color={agent.color} active={working} theme={preferences.theme} />
+    <Desk color={seat.placement === 'lead' ? '#ba9759' : agent.color} active={active} theme={preferences.theme} />
     <group ref={node => { traveler.current = node; if (node) avatars.current.set(agent.id, node); else avatars.current.delete(agent.id) }} position={[0, 0, STAND_Z]} rotation={[0, Math.PI, 0]}>
-      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} gaitRef={gaitRef} seatedRef={seatedRef} coffeeRef={coffeeRef}/>
+      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} gaitRef={gaitRef} seatedRef={seatedRef} coffeeRef={coffeeRef} animate={preferences.motion !== 'off'}/>
     </group>
   </group>
 }
@@ -169,16 +186,15 @@ function Workstation({ seat, sector, ordinal, coffeeStop, selected, pose, onSele
 function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeats, distantSeats, overview, preferences }: { selected: AgentId; tasks: OfficeTask[]; onSelect: (value: AgentId) => void; now: number; overlayId: string; layout: OfficeLayout; visibleSeats: Seat[]; distantSeats: Seat[]; overview: boolean; preferences: OfficePreferences }) {
   const { size } = useThree()
   const avatars = useRef(new Map<string, Group>())
-  const coffeeStop = useMemo(() => {
-    const station = layout.amenities.find(amenity => amenity.id === 'coffee')
-    if (!station) return undefined
-    const workDepth = Math.max(...layout.sectors.map(sector => sector.center[2] + sector.depth / 2))
-    return { x: station.x, z: station.z, aisleZ: workDepth + .3 }
+  const [initialSimulation] = useState(() => reconcileOfficeSimulation(layout, new Map(), new Set(tasks.filter(task => task.status === 'running').map(task => task.agentId))))
+  const simulation = useRef<OfficeSimulation>(initialSimulation)
+  useLayoutEffect(() => {
+    simulation.current = reconcileOfficeSimulation(layout, simulation.current)
   }, [layout])
-  const distantWorking = useMemo(() => new Set(distantSeats.filter(seat =>
-    ['thinking', 'coding', 'researching', 'finishing'].includes(
-      resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now),
-    )).map(seat => seat.agent.id)), [distantSeats, tasks, now])
+  const visibleIds = useMemo(() => new Set(visibleSeats.map(seat => seat.agent.id)), [visibleSeats])
+  const detailedSectorKeys = useMemo(() => new Set(visibleSeats.map(seat => seat.sectorKey)), [visibleSeats])
+  const activeIds = useMemo(() => new Set(tasks.filter(task => task.status === 'running').map(task => task.agentId)), [tasks])
+  useFrame((_, delta) => stepOfficeSimulation(simulation.current, visibleIds, activeIds, delta, preferences.motion), -1)
   const center = layout.seats.find(seat => seat.agent.id === selected)?.position || layout.sectors[0]?.center || [0, 0, 0]
   const target: [number, number, number] = overview ? [layout.width / 2, 1, layout.depth / 2] : [center[0], 1, center[2]]
   // Use the actual canvas size so every room fits on screen as the campus grows.
@@ -201,12 +217,13 @@ function Studio({ selected, tasks, onSelect, now, overlayId, layout, visibleSeat
       shadow-camera-bottom={-Math.max(16, layout.depth + 2)}
       shadow-camera-near={.5} shadow-camera-far={95}
       shadow-normalBias={.028} shadow-bias={-.0002}/>
-    <OfficeCampus layout={layout} preferences={preferences}/>
-    <OfficeCrowdLOD seats={distantSeats} theme={preferences.theme} working={distantWorking} onSelect={onSelect}/>
-    {visibleSeats.map(seat => <Workstation key={seat.agent.id} seat={seat} sector={layout.sectors.find(sector => sector.id === seat.sector)!} ordinal={layout.seats.findIndex(item => item.agent.id === seat.agent.id)} coffeeStop={coffeeStop} selected={selected === seat.agent.id} pose={resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now)} onSelect={() => onSelect(seat.agent.id)} preferences={preferences} avatars={avatars}/>)}
+    <OfficeCampus layout={layout} preferences={preferences} detailedSectorKeys={detailedSectorKeys}/>
+    <OfficeCrowdLOD seats={distantSeats} theme={preferences.theme} working={activeIds} simulation={simulation} onSelect={onSelect}/>
+    {visibleSeats.map(seat => <Workstation key={seat.agent.id} seat={seat} simulation={simulation} active={activeIds.has(seat.agent.id)} selected={selected === seat.agent.id} pose={resolveAgentPose(selectAgentTask(tasks, seat.agent.id, now), now)} onSelect={() => onSelect(seat.agent.id)} preferences={preferences} avatars={avatars}/>)}
     <BadgeProjector overlayId={overlayId} seats={visibleSeats} sectors={layout.sectors} avatars={avatars}/>
     <OrthographicCamera key={`${cameraKey}-camera`} makeDefault position={[target[0] + 15, target[1] + 17, target[2] + 19]} zoom={overview ? overviewZoom : 42} near={.1} far={Math.max(250, layout.width + layout.depth + 100)} />
-    <OrbitControls key={`${cameraKey}-controls`} target={target} minPolarAngle={.25} maxPolarAngle={1.46} enablePan enableDamping dampingFactor={.08} minZoom={overview ? Math.min(2, overviewZoom) : 12} maxZoom={165} />
+    <OrbitControls key={`${cameraKey}-controls`} makeDefault target={target} minPolarAngle={.25} maxPolarAngle={1.46} enablePan enableDamping dampingFactor={.08} minZoom={overview ? Math.min(2, overviewZoom) : 12} maxZoom={165} />
+    <FollowSelected key={`${cameraKey}-${center[0]}-${center[2]}`} selected={selected} overview={overview} avatars={avatars} center={center}/>
   </>
 }
 
@@ -214,7 +231,41 @@ export default function OfficeScene({ selected, tasks, onSelect, overview = fals
   const { t: tr } = useLanguage()
   const agents = useAgents()
   const { preferences } = useOfficePreferences()
-  const layout = useMemo(() => makeOfficeLayout(agents, preferences.spacing), [agents, preferences.spacing])
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const change = () => setReducedMotion(query.matches)
+    query.addEventListener('change', change)
+    return () => query.removeEventListener('change', change)
+  }, [])
+  const effectivePreferences = useMemo(() => reducedMotion ? { ...preferences, motion: 'off' as const } : preferences, [preferences, reducedMotion])
+  const desiredLayout = useMemo(() => makeOfficeLayout(agents, preferences.spacing), [agents, preferences.spacing])
+  const desiredKey = useMemo(() => layoutGeometryKey(desiredLayout), [desiredLayout])
+  const [presentation, setPresentation] = useState(() => ({ layout: desiredLayout, key: desiredKey, phase: 'ready' }))
+  const presentationRef = useRef(presentation)
+  useLayoutEffect(() => { presentationRef.current = presentation }, [presentation])
+  const desiredRef = useRef({ layout: desiredLayout, key: desiredKey })
+  useLayoutEffect(() => { desiredRef.current = { layout: desiredLayout, key: desiredKey } }, [desiredLayout, desiredKey])
+  // Profile/activity snapshots must not reset a geometry transition's deadlines.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPresentation(value => value.key === desiredKey && value.layout !== desiredLayout
+      ? { ...value, layout: desiredLayout } : value), 0)
+    return () => window.clearTimeout(timer)
+  }, [desiredLayout, desiredKey])
+  useEffect(() => {
+    const current = presentationRef.current
+    if (current.key === desiredKey && current.phase === 'ready') return
+    const timers: number[] = []
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 16 : 220
+    timers.push(window.setTimeout(() => setPresentation(value => ({ ...value, phase: current.key === desiredKey ? 'opening' : 'closing' })), 0))
+    timers.push(window.setTimeout(() => {
+      const latest = desiredRef.current
+      setPresentation({ layout: latest.layout, key: latest.key, phase: 'opening' })
+      timers.push(window.setTimeout(() => setPresentation(value => ({ ...value, phase: 'ready' })), delay))
+    }, delay))
+    return () => timers.forEach(window.clearTimeout)
+  }, [desiredKey])
+  const layout = presentation.layout
   // Keep nearby stations detailed at large team sizes; focus another agent to inspect their wing.
   const visibleSeats = useMemo(() => {
     if (layout.seats.length <= 50) return layout.seats
@@ -244,10 +295,11 @@ export default function OfficeScene({ selected, tasks, onSelect, overview = fals
     const timeout = window.setTimeout(() => setNow(Date.now()), Math.min(...expiries) - current + 25)
     return () => window.clearTimeout(timeout)
   }, [tasks, now])
-  return <div className="office-3d-shell" data-office-theme={preferences.theme} data-office-motion={preferences.motion}>
+  return <div className="office-3d-shell" data-office-theme={preferences.theme} data-office-motion={effectivePreferences.motion} data-layout-transition={presentation.phase} aria-busy={presentation.phase !== 'ready'}>
     <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true, alpha: false }} onPointerMissed={() => { }}>
-      <Studio selected={selected} tasks={tasks} onSelect={onSelect} now={now} overlayId={overlayId} layout={layout} visibleSeats={visibleSeats} distantSeats={distantSeats} overview={overview} preferences={preferences}/>
+      <Studio key={presentation.key} selected={selected} tasks={tasks} onSelect={onSelect} now={now} overlayId={overlayId} layout={layout} visibleSeats={visibleSeats} distantSeats={distantSeats} overview={overview} preferences={effectivePreferences}/>
     </Canvas>
+    {presentation.phase === 'closing' && <div className="scene-layout-loading" role="status">{tr('Loading 3D office…')}</div>}
     <div id={overlayId} className={`scene-phase-overlay${overview ? ' is-overview' : ''}`} aria-label={tr('Current phase')}>
       {visibleSeats.map(({ agent }) => {
         const task = selectAgentTask(tasks, agent.id, now)
@@ -257,7 +309,7 @@ export default function OfficeScene({ selected, tasks, onSelect, overview = fals
           <i aria-hidden="true" />{tr(text)}
         </span>
       })}
-      {layout.sectors.map(sector => <span key={sector.id} className="scene-sector-label" data-sector={sector.id}>
+      {layout.sectors.map(sector => <span key={sector.key} className="scene-sector-label" data-sector={sector.key}>
         <i style={{ background: preferences.sectorColors[sector.id] || DEPARTMENTS.find(dep => dep.id === sector.id)?.color }}/>{overview ? tr(DEPARTMENTS.find(dep => dep.id === sector.id)?.name || sector.id).split(/[ &]+/)[0] : tr(DEPARTMENTS.find(dep => dep.id === sector.id)?.name || sector.id)} · {sector.count}
       </span>)}
     </div>

@@ -7,9 +7,9 @@ export function Avatar({ id, size = 'md' }: {
     size?: 'sm' | 'md' | 'lg';
 }) {
     const agent = useAgent(id);
-    return <span className={`avatar avatar-${size}`} style={{ '--agent-color': agent?.color || '#9ba9c2' } as CSSProperties}><span className="avatar-head"/><span className="avatar-shoulders"/></span>;
+    return <span aria-hidden="true" className={`avatar avatar-${size}`} style={{ '--agent-color': agent?.color || '#9ba9c2' } as CSSProperties}><span className="avatar-head"/><span className="avatar-shoulders"/></span>;
 }
 
 export function Dot({ status }: {
     status: string;
-}) { return <span className={`dot dot-${status}`}/>; }
+}) { return <span aria-hidden="true" className={`dot dot-${status}`}/>; }

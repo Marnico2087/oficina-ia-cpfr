@@ -7,6 +7,7 @@ import { resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
 import puppeteer from 'puppeteer-core'
 import { PNG } from 'pngjs'
+import { DEFAULT_AGENTS } from '../server/agents.mjs'
 
 const chrome = process.env.CHROME_BIN || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/google-chrome')
 const listener = createServer()
@@ -42,7 +43,13 @@ try {
   page.on('request', req => { if (new URL(req.url()).pathname.startsWith('/api/')) apiRequests.push(req.url()) })
   page.on('response', response => { if (response.status() >= 400) failedResources.push(`${response.status()} ${response.url()}`) })
   await page.setViewport({ width: 1440, height: 960 })
-  await page.evaluateOnNewDocument(() => localStorage.setItem('agent-office-language', 'en'))
+  await page.evaluateOnNewDocument(defaultAgents => {
+    localStorage.setItem('agent-office-language', 'en')
+    // Server fixtures no longer populate Demo. Seed this visitor's isolated sample roster explicitly.
+    if (localStorage.getItem('agent-office-public-demo-roster-v1') === null) {
+      localStorage.setItem('agent-office-public-demo-roster-v1', JSON.stringify(defaultAgents))
+    }
+  }, DEFAULT_AGENTS)
   await page.goto(`${origin}/agent-office/`, { waitUntil: 'domcontentloaded' })
   try { await page.waitForSelector('canvas', { timeout: 25000 }) }
   catch (error) {
@@ -57,6 +64,7 @@ try {
   await page.click('[aria-label="Agent team"]')
   await page.evaluate(() => [...document.querySelectorAll('button')].find(el => el.textContent?.includes('Add agent'))?.click())
   await page.waitForSelector('#agent-name')
+  assert.equal(await page.$eval('#agent-name', el => el === document.activeElement), true, 'Agent dialog needs initial focus')
   await page.type('#agent-name', 'Visitor')
   await page.type('#agent-role', 'Security engineer')
   await page.type('#agent-specialty', 'Inspect a test environment')
@@ -101,15 +109,26 @@ try {
   await page.screenshot({ path: resolve('work/public-demo.png'), fullPage: true })
   await page.evaluate(() => [...document.querySelectorAll('button')].find(el => el.textContent?.includes('Create a task'))?.click())
   await page.waitForSelector('#prompt')
+  assert.equal(await page.$eval('#prompt', el => el === document.activeElement), true, 'Task dialog needs initial focus')
   assert.equal(await page.$('#mission-dir'), null, 'Demo must not request a filesystem path')
   await page.type('#prompt', 'Test preview task')
   await page.evaluate(() => [...document.querySelectorAll('button')].find(el => el.textContent?.includes('Launch task'))?.click())
   await page.waitForFunction(() => document.body.textContent.includes('Demo task started'))
   await sleep(300)
+  // Corrupt browser data must recover without consulting a private or real roster.
+  await page.evaluate(() => localStorage.setItem('agent-office-public-demo-roster-v1', '{broken'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await count(4)
+  await page.evaluate(() => localStorage.setItem('agent-office-public-demo-roster-v1', '[]'))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await count(0)
+  await page.click('.intro .primary-btn')
+  await page.waitForSelector('.team-intro')
+  assert.equal(await page.$('dialog[open]'), null, 'Empty demo roster must ask for an agent first')
   assert.deepEqual(apiRequests, [], 'Public demo must make zero API calls')
   assert.deepEqual(errors, [], `Browser errors: ${errors.join(' | ')}`)
   console.log(JSON.stringify({ publicDemo: 'passed', agents: 5, persistedEdits: true, persistedAppearance: true,
-    simulatedTask: true, apiCalls: apiRequests.length, consoleErrors: errors.length }))
+    simulatedTask: true, corruptStorageRecovery: true, emptyRoster: true, modalFocus: true, apiCalls: apiRequests.length, consoleErrors: errors.length }))
 } finally {
   if (browser) await browser.close()
   if (server.exitCode === null) { const done = once(server, 'exit'); server.kill(); await Promise.race([done, sleep(5000)]) }

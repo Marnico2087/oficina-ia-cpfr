@@ -41,6 +41,8 @@ These are optional **process environment variables**, not an automatically loade
 
 ## Commands
 
+Upgrade the CLI and VS Code companion together for v0.4. The companion now verifies the instance and workspace of its own CLI process. The VSIX packager is pinned to VSCE 4.0.0; downloaded packaging tools remain in npm's cache and are not included in the project runtime.
+
 | Command | Purpose |
 | --- | --- |
 | `npm run dev:all` | Local API + UI in one terminal |
@@ -54,6 +56,9 @@ These are optional **process environment variables**, not an automatically loade
 | `npm run check:server` | Server syntax check |
 | `npm run check:public` | Scan tracked files for secrets and private paths |
 | `npm run verify:public` | Pre-push full validation |
+| `npm run smoke:floor` | Isolated rendered floor matrix, dynamic size, LOD selection, mobile/desktop; no AI jobs |
+| `npm run smoke:avatars` | Isolated seated/walking/coffee captures; no AI jobs |
+| `npm run smoke:roster` | Isolated live roster CRUD and expansion browser tests; no AI jobs |
 | `npm run smoke:browser` | Browser/WebGL and language regression tests with API + UI running |
 | `npm run smoke:live` | **Executes real Codex tasks and consumes usage** |
 | `npm run smoke:live-ui` | **Executes a real Codex task and consumes usage**; verifies Live mode from the browser to the final file |

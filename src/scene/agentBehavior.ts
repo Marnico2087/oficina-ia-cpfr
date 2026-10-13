@@ -17,11 +17,11 @@ export function resolveAgentPose(task?: OfficeTask, now = Date.now()): AgentPose
   return 'idle'
 }
 
-// Brief terminal reactions remain visible even if another task is still running
-// on the same agent. Afterwards the current running task resumes the scene.
+// Active work outranks a terminal reaction from the preceding task. Otherwise
+// a fresh task could appear idle/failed while the backend is actually running.
 export function selectAgentTask(tasks: OfficeTask[], agentId: AgentId, now = Date.now()): OfficeTask | undefined {
   const assigned = tasks.filter(task => task.agentId === agentId)
     .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-  return assigned.find(task => ['celebrating', 'error'].includes(resolveAgentPose(task, now))) ??
-    assigned.find(task => task.status === 'running') ?? assigned[0]
+  return assigned.find(task => task.status === 'running') ??
+    assigned.find(task => ['celebrating', 'error'].includes(resolveAgentPose(task, now))) ?? assigned[0]
 }

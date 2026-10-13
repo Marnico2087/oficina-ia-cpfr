@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
 import { Vector3, type Group } from 'three'
 import { DEPARTMENTS } from '../agents'
+import { departmentDecor } from './officeDecor'
 import type { Department } from '../types'
 import type { OfficeLayout, Sector } from './officeLayout'
 import type { OfficePreferences } from './officePreferences'
@@ -56,7 +57,7 @@ function Bookshelf({ x, z }: { x: number; z: number }) {
     <mesh position={[0, 1.05, 0]}><boxGeometry args={[1.5, 2.1, .48]}/><meshStandardMaterial color="#515369"/></mesh>
     {[0, 1, 2, 3].map(row => <group key={row} position={[0, .34 + row * .46, .27]}>
       <mesh><boxGeometry args={[1.41, .055, .1]}/><meshStandardMaterial color="#c1a484"/></mesh>
-      {Array.from({ length: 7 }, (_, i) => <mesh key={i} position={[-.58 + i * .19, .21, 0]}><boxGeometry args={[.13, .32 + (i % 3) * .038, .18]}/><meshStandardMaterial color={['#d2b18a', '#7aabaf', '#a6a1cc', '#6c829c'][i % 4]}/></mesh>)}
+      {Array.from({ length: 7 }, (_, i) => <mesh key={i} position={[-.58 + i * .19, .0275 + (.32 + (i % 3) * .038) / 2, 0]}><boxGeometry args={[.13, .32 + (i % 3) * .038, .18]}/><meshStandardMaterial color={['#d2b18a', '#7aabaf', '#a6a1cc', '#6c829c'][i % 4]}/></mesh>)}
     </group>)}
   </group>
 }
@@ -129,28 +130,35 @@ function StudioIdentity({ width, depth, dark, accent }: { width: number; depth: 
 }
 
 function DepartmentProps({ id, width, depth }: { id: Department; width: number; depth: number }) {
-  const back = -depth / 2 + .42
-  const boardX = -width / 2 + 1.02
-  if (id === 'research') return <><Bookshelf x={-width / 2 + 1.35} z={back + 1}/><Bookshelf x={width / 2 - 1.45} z={back + 1}/><Panel x={0} y={2.12} z={back} w={2.25} h={1.1} color="#b3a3fa"/></>
-  if (id === 'engineering') return <><group position={[width / 2 - .95, 0, back + 1]}>
-    <mesh position={[0, 1.01, -.1]}><boxGeometry args={[1.04, 2.02, .64]}/><meshStandardMaterial color="#526577"/></mesh>
-    {[0, 1, 2].map(i => <mesh key={i} position={[0, .47 + i * .65, .28]}><boxGeometry args={[.92, .58, .12]}/><meshStandardMaterial color="#1a304c" emissive="#215374" emissiveIntensity={.22}/></mesh>)}
-    {[0, 1, 2].map(i => <mesh key={i} position={[.3, .44 + i * .65, .355]}><sphereGeometry args={[.036, 8, 8]}/><meshBasicMaterial color="#5de0c8"/></mesh>)}
-  </group><Panel x={boardX} y={2.12} z={back} w={2.3} h={1.25} color="#287fa5"/></>
-  if (id === 'design') return <><group position={[width / 2 - 1.2, 0, back + 1]}><mesh position={[0, 1, 0]} rotation={[-.1, 0, 0]}><boxGeometry args={[1.13, 1.6, .08]}/><meshStandardMaterial color="#c7a594"/></mesh>
-    {[-.4, .4].map(x => <mesh key={x} position={[x, .51, -.08]}><boxGeometry args={[.07, 1.02, .11]}/><meshStandardMaterial color="#8a766f"/></mesh>)}
-    {['#eea3a2', '#dbd18d', '#82bec5'].map((color, i) => <mesh key={color} position={[0, 1.5 - i * .45, .08]}><boxGeometry args={[.8, .32, .022]}/><meshStandardMaterial color={color}/></mesh>)}</group><Panel x={boardX} y={2.1} z={back} w={2.1} h={1.12} color="#bc8a87"/></>
-  if (id === 'quality') return <><Panel x={boardX} y={2.15} z={back} w={2.7} h={1.24} color="#3f966f"/><group position={[width / 2 - 1.4, 0, back + .9]}>
-    {[-.7, .7].map(x => <mesh key={x} position={[x, .85, 0]}><boxGeometry args={[.07, 1.7, .56]}/><meshStandardMaterial color="#657584"/></mesh>)}
-    {[0, 1, 2].map(i => <mesh key={i} position={[0, .5 + i * .44, 0]}><boxGeometry args={[1.6, .25, .55]}/><meshStandardMaterial color={i === 2 ? '#779a89' : '#535e71'}/></mesh>)}</group></>
-  if (id === 'architecture') return <><Panel x={boardX} y={2.1} z={back} w={3.4} h={1.5} color="#687fc0"/><mesh position={[width / 2 - 1.45, .79, back + .85]}><boxGeometry args={[1.7, 1.6, .08]}/><meshStandardMaterial color="#cfd7d8"/></mesh></>
-  if (id === 'operations') return <><Panel x={-1.4} y={2.1} z={back} w={2.2} h={1.28} color="#c9aa53"/><Panel x={1.4} y={2.1} z={back} w={2.2} h={1.28} color="#6a96ad"/></>
-  if (id === 'security') return <><Panel x={-1.5} y={2.15} z={back} w={2.3} h={1.25} color="#b7657f"/><Panel x={1.5} y={2.15} z={back} w={2.3} h={1.25} color="#5e8ba7"/><mesh position={[width / 2 - 1.1, .8, back + 1]}><boxGeometry args={[.85, 1.6, .65]}/><meshStandardMaterial color="#1c2a3e"/></mesh></>
-  if (id === 'data') return <><Panel x={-1.4} y={2.1} z={back} w={2.25} h={1.32} color="#408da5"/><Panel x={1.4} y={2.1} z={back} w={2.25} h={1.32} color="#6397a7"/><Bookshelf x={width / 2 - 1.1} z={back + 1}/></>
-  return <><Panel x={boardX} y={2.12} z={back} w={2.6} h={1.1} color="#758da9"/></>
+  const decor = departmentDecor(id, width, depth)
+  return <>
+    {decor.boards.map((board, i) => <Panel key={`board-${i}`} {...board}/>)}
+    {decor.furniture.map((item, i) => {
+      const key = `fixture-${i}`
+      if (item.kind === 'books') return <Bookshelf key={key} x={item.x} z={item.z}/>
+      if (item.kind === 'board' || item.kind === 'cabinet') return <mesh key={key} position={[item.x, item.y, item.z]}>
+        <boxGeometry args={[item.width, item.height, item.depth]}/><meshStandardMaterial color={item.kind === 'board' ? '#cfd7d8' : '#1c2a3e'}/>
+      </mesh>
+      if (item.kind === 'server') return <group key={key} position={[item.x, 0, item.z]}>
+        <mesh position={[0, 1.01, -.1]}><boxGeometry args={[1.04, 2.02, .64]}/><meshStandardMaterial color="#526577"/></mesh>
+        {[0, 1, 2].map(n => <mesh key={n} position={[0, .47 + n * .65, .28]}><boxGeometry args={[.92, .58, .12]}/><meshStandardMaterial color="#1a304c" emissive="#215374" emissiveIntensity={.22}/></mesh>)}
+        {[0, 1, 2].map(n => <mesh key={`led-${n}`} position={[.3, .44 + n * .65, .355]}><sphereGeometry args={[.036, 8, 8]}/><meshBasicMaterial color="#5de0c8"/></mesh>)}
+      </group>
+      if (item.kind === 'rack') return <group key={key} position={[item.x, 0, item.z]}>
+        {[-.7, .7].map(x => <mesh key={x} position={[x, .85, 0]}><boxGeometry args={[.07, 1.7, .56]}/><meshStandardMaterial color="#657584"/></mesh>)}
+        {[0, 1, 2].map(n => <mesh key={n} position={[0, .5 + n * .44, 0]}><boxGeometry args={[1.6, .25, .55]}/><meshStandardMaterial color={n === 2 ? '#779a89' : '#535e71'}/></mesh>)}
+      </group>
+      return <group key={key} position={[item.x, 0, item.z]}>
+        <mesh position={[0, 1, 0]} rotation={[-.1, 0, 0]}><boxGeometry args={[1.13, 1.6, .08]}/><meshStandardMaterial color="#c7a594"/></mesh>
+        {[-.4, .4].map(x => <mesh key={x} position={[x, .51, -.08]}><boxGeometry args={[.07, 1.02, .11]}/><meshStandardMaterial color="#8a766f"/></mesh>)}
+        {['#eea3a2', '#dbd18d', '#82bec5'].map((color, n) => <mesh key={color} position={[0, 1.5 - n * .45, .08]}><boxGeometry args={[.8, .32, .022]}/><meshStandardMaterial color={color}/></mesh>)}
+      </group>
+    })}
+    {decor.planter && <Planter x={decor.planter.x} z={decor.planter.z}/>}
+  </>
 }
 
-function SectorRoom({ sector, preferences }: { sector: Sector; preferences: OfficePreferences }) {
+function SectorRoom({ sector, preferences, detailed = true }: { sector: Sector; preferences: OfficePreferences; detailed?: boolean }) {
   const { center: [cx, , cz], width, depth, id } = sector
   const backArchitecture = useRef<Group>(null)
   // Cutting the nearest wall is essential for an orbitable isometric scene:
@@ -165,18 +173,22 @@ function SectorRoom({ sector, preferences }: { sector: Sector; preferences: Offi
   const dark = preferences.theme === 'midnight'
   const back = -depth / 2
   const fixtureCount = Math.max(1, Math.min(3, Math.round(width / 4.6)))
+  if (!detailed) return <group position={[cx, 0, cz]}>
+    <mesh position={[0, .001, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[width - .28, depth - .28]}/><meshStandardMaterial color={accent} transparent opacity={.12} depthWrite={false}/></mesh>
+    <mesh position={[0, .55, back + .12]}><boxGeometry args={[width - .3, 1.1, .16]}/><meshStandardMaterial color={palette.wall} roughness={.9}/></mesh>
+  </group>
   return <group position={[cx, 0, cz]}>
     {/* One continuous office floor, with subtle team-colored zoning only. */}
-    <mesh position={[0, -.041, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh position={[0, .001, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[width - .28, depth - .28]}/>
       <meshStandardMaterial color={palette.floor} transparent opacity={.18} roughness={.92} depthWrite={false}/>
     </mesh>
-    <mesh position={[0, -.027, -depth / 2 + .27]}><boxGeometry args={[width - .55, .018, .13]}/><meshStandardMaterial color={accent} transparent opacity={.65}/></mesh>
+    <mesh position={[0, .005, -depth / 2 + .27]}><boxGeometry args={[width - .55, .006, .13]}/><meshStandardMaterial color={accent} transparent opacity={.65}/></mesh>
     {/* Floor-level circulation markers make the route legible without
         placing a single obstacle in an agent's walking path. */}
     {Array.from({ length: Math.max(0, Math.floor((depth - 2.3) / 1.18)) }, (_, i) =>
-      <mesh key={`aisle-mark-${i}`} position={[-width / 2 + .58, -.034, -depth / 2 + 2.05 + i * 1.18]}>
-        <boxGeometry args={[.40, .009, .095]}/>
+      <mesh key={`aisle-mark-${i}`} position={[-width / 2 + .58, .006, -depth / 2 + 2.05 + i * 1.18]}>
+        <boxGeometry args={[.40, .006, .095]}/>
         <meshStandardMaterial color={accent} transparent opacity={.35} roughness={.98}/>
       </mesh>)}
     {/* A shared studio gets real architectural edges without interior walls
@@ -208,6 +220,7 @@ function SectorRoom({ sector, preferences }: { sector: Sector; preferences: Offi
     {Array.from({length: fixtureCount}, (_, i) => {
       const x = (i - (fixtureCount - 1) / 2) * Math.min(4.2, width / (fixtureCount + .35))
       return <group key={`light-${i}`} position={[x, 0, back + 2.15]}>
+        {[-.62, .62].map(offset => <mesh key={`mount-${offset}`} position={[offset, 3.34, -.9]}><boxGeometry args={[.045, .07, 1.9]}/><meshStandardMaterial color={dark ? '#536d81' : '#b4c4cf'} metalness={.3}/></mesh>)}
         {[-.62, .62].map(offset => <mesh key={offset} position={[offset, 3.18, 0]}>
           <cylinderGeometry args={[.012, .012, .30, 6]}/><meshStandardMaterial color="#96a8b5" metalness={.5}/>
         </mesh>)}
@@ -230,8 +243,6 @@ function SectorRoom({ sector, preferences }: { sector: Sector; preferences: Offi
     </group>
     <pointLight position={[0, 3.7, 0]} intensity={depth > 13 ? 2.4 : 1.6} distance={Math.max(9, depth * .9)} color="#e8f4ff"/>
     <DepartmentProps id={id} width={width} depth={depth}/>
-    {id !== 'general' && <Planter x={width / 2 - .8} z={-depth / 2 + .75}/>}
-    {sector.count >= 3 && <Planter x={-width / 2 + .8} z={-depth / 2 + .75}/>}
   </group>
 }
 
@@ -239,8 +250,8 @@ function SharedLounge({ x, z, theme }: { x: number; z: number; theme: OfficePref
   const tabletop = theme === 'midnight' ? '#9e8a7d' : theme === 'warm' ? '#d3ab86' : '#d6c4ac'
   return <group position={[x, 0, z]}>
     {/* The meeting spot is outside all workstation routes and chair footprints. */}
-    <mesh position={[0, -.027, 0]} receiveShadow>
-      <cylinderGeometry args={[2.15, 2.15, .028, 40]}/><meshStandardMaterial color={theme === 'midnight' ? '#3d5965' : '#c8d7cf'} roughness={1}/>
+    <mesh position={[0, .003, 0]} receiveShadow>
+      <cylinderGeometry args={[2.15, 2.15, .006, 40]}/><meshStandardMaterial color={theme === 'midnight' ? '#3d5965' : '#c8d7cf'} roughness={1}/>
     </mesh>
     <RoundedBox position={[0, .72, 0]} args={[2.25, .13, .98]} radius={.11} castShadow>
       <meshStandardMaterial color={tabletop} roughness={.76}/>
@@ -263,17 +274,55 @@ function SharedLounge({ x, z, theme }: { x: number; z: number; theme: OfficePref
 
 function CoffeePoint({ x, z }: { x: number; z: number }) {
   return <group position={[x, 0, z]}>
-    <RoundedBox position={[0, .53, 0]} args={[1.35, 1.06, .7]} radius={.07} castShadow>
+    <mesh position={[0, .003, 0]}><boxGeometry args={[4.9, .006, 2.25]}/><meshStandardMaterial color="#d6dfdb" roughness={1}/></mesh>
+    <RoundedBox position={[0, .53, 0]} args={[3.4, 1.06, .7]} radius={.07} castShadow>
       <meshStandardMaterial color="#8298a8" roughness={.76}/>
     </RoundedBox>
-    <RoundedBox position={[0, 1.09, 0]} args={[1.48, .12, .8]} radius={.04} castShadow>
+    <RoundedBox position={[0, 1.09, 0]} args={[3.55, .12, .8]} radius={.04} castShadow>
       <meshStandardMaterial color="#d6c2a8" roughness={.73}/>
     </RoundedBox>
-    <RoundedBox position={[-.27, 1.25, -.12]} args={[.47, .28, .3]} radius={.035}>
+    <RoundedBox position={[-.35, 1.39, -.1]} args={[.6, .48, .4]} radius={.035}>
       <meshStandardMaterial color="#2e455b" metalness={.25}/>
     </RoundedBox>
-    <mesh position={[-.27, 1.38, .05]}><boxGeometry args={[.18, .025, .15]}/><meshStandardMaterial color="#b9d6df"/></mesh>
-    <mesh position={[.37, 1.17, .04]}><cylinderGeometry args={[.1, .095, .13, 12]}/><meshStandardMaterial color="#f7f1e6"/></mesh>
+    <mesh position={[-.35, 1.45, .16]}><boxGeometry args={[.2, .04, .16]}/><meshStandardMaterial color="#b9d6df"/></mesh>
+    {[.4, .72].map(px => <mesh key={px} position={[px, 1.235, .04]}><cylinderGeometry args={[.1, .095, .16, 12]}/><meshStandardMaterial color="#f7f1e6"/></mesh>)}
+    {[-1.15, 1.25].map(px => <group key={px} position={[px, .56, .359]}>
+      <mesh><boxGeometry args={[.73, .82, .015]}/><meshStandardMaterial color="#dce4e5"/></mesh>
+      <mesh position={[0, .29, .022]}><boxGeometry args={[.23, .025, .018]}/><meshStandardMaterial color="#6d8496"/></mesh>
+    </group>)}
+    <group position={[1.3, 1.16, -.03]}><mesh position={[0, .07, 0]}><cylinderGeometry args={[.14, .14, .14, 12]}/><meshStandardMaterial color="#ddb389"/></mesh>
+      <mesh position={[0, .29, 0]}><sphereGeometry args={[.22, 10, 8]}/><meshStandardMaterial color="#78a897"/></mesh></group>
+    <RoundedBox position={[0, 1.95, -.5]} args={[3.5, .65, .13]} radius={.035}><meshStandardMaterial color="#c2d3d3"/></RoundedBox>
+    <mesh position={[0, 1.43, -.38]}><boxGeometry args={[3.45, .65, .12]}/><meshStandardMaterial color="#9db6b4" roughness={.83}/></mesh>
+    <mesh position={[0, 1.97, -.423]}><boxGeometry args={[1.7, .05, .008]}/><meshStandardMaterial color="#689b8d"/></mesh>
+  </group>
+}
+
+function Reception({ x, z, accent }: { x: number; z: number; accent: string }) {
+  return <group position={[x, 0, z]}>
+    <mesh position={[0, .003, .4]}><boxGeometry args={[5.5, .006, 3.4]}/><meshStandardMaterial color="#d5dde7" roughness={1}/></mesh>
+    <RoundedBox position={[0, .58, 0]} args={[3.3, 1.16, .85]} radius={.09} castShadow><meshStandardMaterial color="#e5e9eb" roughness={.8}/></RoundedBox>
+    <RoundedBox position={[0, 1.19, 0]} args={[3.5, .10, .95]} radius={.045}><meshStandardMaterial color="#c1a283" roughness={.72}/></RoundedBox>
+    {Array.from({ length: 12 }, (_, i) => <mesh key={i} position={[-1.4 + i * .25, .6, .434]}><boxGeometry args={[.065, .95, .018]}/><meshStandardMaterial color="#b29c83"/></mesh>)}
+    <mesh position={[.8, 1.46, -.1]}><boxGeometry args={[.67, .45, .055]}/><meshStandardMaterial color="#2f4c60"/></mesh>
+    <mesh position={[.8, 1.27, -.1]}><boxGeometry args={[.07, .15, .08]}/><meshStandardMaterial color="#617888"/></mesh>
+    <mesh position={[-.75, 1.252, .05]}><boxGeometry args={[.56, .02, .35]}/><meshStandardMaterial color={accent}/></mesh>
+    <RoundedBox position={[0, 2.03, -1.13]} args={[4.7, 1.7, .14]} radius={.04}><meshStandardMaterial color="#c6d2dc"/></RoundedBox>
+    {[-1, 1].map(side => <RoundedBox key={side} position={[side * 1.34, 1.08, -1.03]} args={[.83, 2.12, .06]} radius={.015}><meshStandardMaterial color="#8193a4" metalness={.5} roughness={.45}/></RoundedBox>)}
+    <mesh position={[0, 2.12, -.99]}><boxGeometry args={[.75, .35, .018]}/><meshStandardMaterial color={accent}/></mesh>
+  </group>
+}
+
+function SupportWing({ layout, accent, dark }: { layout: OfficeLayout; accent: string; dark: boolean }) {
+  return <group>
+    <mesh position={[layout.spineX - 1.7, .002, layout.depth / 2]}><boxGeometry args={[.065, .006, layout.depth - .8]}/><meshStandardMaterial color="#a6bbb8"/></mesh>
+    {layout.amenities.filter(amenity => amenity.id === 'meeting' || amenity.id === 'focus').map(amenity => <group key={amenity.key} position={[.55, 0, amenity.z]} rotation={[0, Math.PI / 2, 0]}>
+      <RoundedBox position={[0, 1.25, 0]} args={[3.1, 2.5, .14]} radius={.035}><meshStandardMaterial color={dark ? '#3a5164' : '#d9e3e8'} roughness={.85}/></RoundedBox>
+      <Panel x={0} y={1.65} z={.1} w={2.1} h={1.05} color={accent}/>
+    </group>)}
+    <Planter x={layout.width - .65} z={layout.depth - .6}/>
+    <Planter x={.65} z={layout.depth - .65}/>
+    <mesh position={[layout.width / 2, .009, layout.depth - .35]}><boxGeometry args={[layout.width - 1.2, .006, .045]}/><meshStandardMaterial color={accent}/></mesh>
   </group>
 }
 
@@ -333,24 +382,23 @@ function GlassFacade({ width, depth, theme }: { width: number; depth: number; th
   </group>
 }
 
-export function OfficeCampus({ layout, preferences }: { layout: OfficeLayout; preferences: OfficePreferences }) {
+export function OfficeCampus({ layout, preferences, detailedSectorKeys }: { layout: OfficeLayout; preferences: OfficePreferences; detailedSectorKeys: ReadonlySet<string> }) {
   const palette = THEMES[preferences.theme]
   return <group>
     <mesh position={[layout.width / 2, -.46, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 2.2, .7, layout.depth + 1.8]}/><meshStandardMaterial color={palette.outer} roughness={.98}/></mesh>
     {/* One continuous ground plane connects every team bay into a shared studio. */}
-    <mesh position={[layout.width / 2, -.13, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 1.8, .16, layout.depth + 1.5]}/><meshStandardMaterial color={palette.tile} roughness={.91}/></mesh>
-    {layout.passages.map((passage, index) => <group key={index} position={[passage.x, -.1, passage.z]}>
-      <RoundedBox args={[passage.width, .18, passage.depth]} radius={.07} receiveShadow><meshStandardMaterial color={palette.tile}/></RoundedBox>
-      <mesh position={[0, .096, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[Math.max(.35, passage.width - .45), Math.max(.35, passage.depth - .45)]}/><meshStandardMaterial color={preferences.accent} transparent opacity={.16}/></mesh>
+    <mesh position={[layout.width / 2, -.075, layout.depth / 2]} receiveShadow><boxGeometry args={[layout.width + 1.8, .14, layout.depth + 1.5]}/><meshStandardMaterial color={palette.tile} roughness={.91}/></mesh>
+    {layout.passages.map((passage, index) => <group key={index} position={[passage.x, .002, passage.z]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[passage.width, passage.depth]}/><meshStandardMaterial color={preferences.accent} transparent opacity={.09} depthWrite={false}/></mesh>
     </group>)}
-    {layout.sectors.map(sector => <SectorRoom key={sector.id} sector={sector} preferences={preferences}/>)}
+    {layout.sectors.map(sector => <SectorRoom key={sector.key} sector={sector} preferences={preferences} detailed={detailedSectorKeys.has(sector.key)}/>)}
     {layout.amenities.map(amenity => amenity.id === 'meeting'
-      ? <SharedLounge key={amenity.id} x={amenity.x} z={amenity.z} theme={preferences.theme}/>
+      ? <SharedLounge key={amenity.key} x={amenity.x} z={amenity.z} theme={preferences.theme}/>
       : amenity.id === 'coffee'
-        ? <CoffeePoint key={amenity.id} x={amenity.x} z={amenity.z}/>
-        : <FocusNook key={amenity.id} x={amenity.x} z={amenity.z}/>)}
-    {layout.sectors.length === 1 && layout.sectors[0].id === 'general' && layout.sectors[0].count >= 3 &&
-      <Planter x={layout.width - .9} z={layout.amenities.find(amenity => amenity.id === 'meeting')?.z || layout.depth - 1.6}/>}
+        ? <CoffeePoint key={amenity.key} x={amenity.x} z={amenity.z}/>
+        : amenity.id === 'reception' ? <Reception key={amenity.key} x={amenity.x} z={amenity.z} accent={preferences.accent}/>
+        : <FocusNook key={amenity.key} x={amenity.x} z={amenity.z}/>)}
+    <SupportWing layout={layout} accent={preferences.accent} dark={preferences.theme === 'midnight'}/>
     <GlassFacade width={layout.width} depth={layout.depth} theme={preferences.theme}/>
     <ambientLight intensity={.47} color="#e5efff"/>
   </group>

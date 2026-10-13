@@ -19,7 +19,8 @@ jobs:
       - run: npm ci
       - run: npm run verify:public
       - run: npm run package:vscode
-      - run: npm pack --pack-destination work
+      # verify:public already built the production UI. Do not rerun prepack.
+      - run: npm pack --ignore-scripts --pack-destination work
       - run: mv work/agent-office-*.tgz work/agent-office.tgz
       - uses: softprops/action-gh-release@v2
         with:

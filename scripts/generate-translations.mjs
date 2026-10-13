@@ -1,13 +1,35 @@
 // Maintainer-only tool: creates a static translation snapshot. Neither the
 // running app nor the production build makes translation service requests.
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, rename } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import ts from 'typescript'
 
 const source = await readFile(resolve('src/locales/i18n.ts'), 'utf8')
 const text = source.match(/export const phrases = `([\s\S]*?)`\.split\('\\n'\)/)?.[1]
 if (!text) throw new Error('Could not locate phrase catalogue')
-const phrases = text.split('\n')
+// JS template literals normalize CRLF; the source reader must do the same.
+const phrases = text.replace(/\r\n?/g, '\n').split('\n')
 const locales = ['pt-BR', 'pt-PT', 'es', 'fr', 'de', 'it', 'nl', 'pl', 'ru', 'uk', 'tr', 'ar', 'hi', 'zh-CN', 'zh-TW', 'ja', 'ko', 'id', 'vi']
+if (new Set(phrases).size !== phrases.length || phrases.some(phrase => !phrase.trim())) throw Error('Duplicate or empty source phrase')
+const snapshotPath = resolve('src/locales/translations.generated.ts')
+const snapshot = ts.transpileModule(await readFile(snapshotPath, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext } }).outputText
+const { languagePacks: existing } = await import(`data:text/javascript;base64,${Buffer.from(snapshot).toString('base64')}`)
+function validate(packs) {
+  for (const locale of locales) {
+    const lines = packs[locale]
+    if (!Array.isArray(lines) || lines.length !== phrases.length || lines.some(line => typeof line !== 'string' || !line.trim())) {
+      throw Error(`Incomplete ${locale}: ${lines?.length}/${phrases.length}`)
+    }
+  }
+}
+// Offline verification never calls a translation service or writes a snapshot.
+if (process.argv.includes('--check')) {
+  validate(existing)
+  console.log(JSON.stringify({ locales: locales.length + 1, phrases: phrases.length, complete: true, offline: true }))
+  process.exit(0)
+}
+const refreshAll = process.argv.includes('--refresh')
+if (!refreshAll) validate(existing)
 const overrides = {
   'pt-BR': {
     'MISSION CONTROL': 'CENTRAL DE CONTROLE', 'Office studio': 'Escritório 3D', 'Activity & tasks': 'Atividades e tarefas', 'Agent team': 'Equipe de agentes',
@@ -57,6 +79,8 @@ const all = {}
 // Sequential per language to avoid burst rate limits; per-request batches keep
 // a generated locale fully aligned with the original English catalogue.
 for (const locale of locales) {
+  // Preserve reviewed strings by default. --refresh explicitly retranslates the full catalogue.
+  if (!refreshAll) { all[locale] = [...existing[locale]]; continue }
   const lines = []
   for (let i = 0; i < phrases.length; i += 22) {
     const batch = phrases.slice(i, i + 22)
@@ -65,6 +89,9 @@ for (const locale of locales) {
   all[locale] = lines.map((line, index) => overrides[locale]?.[phrases[index]] ?? line)
   if (all[locale].length !== phrases.length) throw Error(`Incomplete ${locale}`)
   console.log(`${locale}: ${all[locale].length} translations`)
-  // Save after each completed locale to make an interrupted generation recoverable.
-  await writeFile(resolve('src/locales/translations.generated.ts'), `// Static locale data generated for Agent Office. Review new strings before publishing.\nexport const languagePacks: Record<string, string[]> = ${JSON.stringify(all, null, 2)}\n`, 'utf8')
 }
+// A failed/interrupted remote generation must not replace the working app with partial packs.
+validate(all)
+const temporary = `${snapshotPath}.tmp`
+await writeFile(temporary, `// Static locale data generated for Agent Office. Review new strings before publishing.\nexport const languagePacks: Record<string, string[]> = ${JSON.stringify(all, null, 2)}\n`, 'utf8')
+await rename(temporary, snapshotPath)

@@ -228,7 +228,24 @@ Lively
 Office accent color
 Social animations
 Visual interactions are simulated, not real AI conversations.
-Restore office defaults`.split('\n')
+Restore office defaults
+Skip to content
+Showing real AI events
+Loading workspace…
+Showing saved activity; the API is offline.
+Unable to load workspace
+Retry
+No AI provider is available.
+Choose an available AI provider.
+Agent is already working.
+Enter an absolute project path.
+No confirmation received. Check task history before trying again.
+Task started
+Invalid agent details
+Preview is limited to 1000 agents
+Demo changes stay in this browser.
+AI CLI is available
+OFFICE 01`.split('\n')
 
 export const languages = [
   { code: 'pt-BR', name: 'Português (Brasil)' },
@@ -259,7 +276,8 @@ export const localeStorageKey = 'agent-office-language'
 const dictionary = new Map<string, Record<string, string>>()
 
 export function translateText(locale: Locale, phrase: string): string {
-  return dictionary.get(locale)?.[phrase] || phrase
+  const pack = dictionary.get(locale)
+  return pack && Object.hasOwn(pack, phrase) ? pack[phrase] : phrase
 }
 
 /** Registers a complete language pack; incomplete packs are rejected so the UI never silently mixes languages. */

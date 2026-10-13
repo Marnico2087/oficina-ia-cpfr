@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,7 +26,10 @@ export function parseArgs(args) {
     throw new Error(`Unknown argument: ${arg}. See agent-office --help.`)
   }
   if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65535) throw new Error('Port must be between 1 and 65535.')
-  if (!existsSync(options.workspace)) throw new Error(`Workspace does not exist: ${options.workspace}`)
+  try {
+    if (!statSync(options.workspace).isDirectory()) throw new Error('not a directory')
+    options.workspace = realpathSync(options.workspace)
+  } catch { throw new Error(`Workspace does not exist or is not a directory: ${options.workspace}`) }
   return options
 }
 
@@ -58,14 +61,16 @@ export async function main(args = process.argv.slice(2)) {
     : join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'agent-office', workspaceKey)
   const url = `http://127.0.0.1:${options.port}/`
   console.log(`Workspace: ${options.workspace}\nOpen: ${url}\nPress Ctrl+C to stop.`)
-  if (options.open) {
+  const server = await import('../server/index.mjs')
+  if (!await server.ready) return server
+  if (options.open && !process.exitCode) {
     // Opening is best effort; the terminal URL remains available if no browser is configured.
     const { command, args: openArgs } = browserCommand(url)
     const child = spawn(command, openArgs, { detached: true, stdio: 'ignore', windowsHide: true })
     child.on('error', () => {})
     child.unref()
   }
-  await import('../server/index.mjs')
+  return server
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main()

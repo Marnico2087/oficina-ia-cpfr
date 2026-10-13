@@ -56,6 +56,7 @@ try {
   browser = await puppeteer.launch({ executablePath: chrome, headless: true,
     args: ['--no-sandbox', '--disable-extensions', '--enable-webgl', '--no-first-run', '--no-default-browser-check', ...(process.env.SOFTWARE_RENDER === '1' ? ['--use-gl=angle', '--use-angle=swiftshader'] : [])] })
   const page = await browser.newPage()
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   await page.setViewport({ width: 1440, height: 960 })
@@ -88,6 +89,8 @@ try {
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('agent-office-appearance-v1')).sectorColors.security === '#c0356a')
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('agent-office-appearance-v1')).theme), 'warm')
   await page.reload({ waitUntil: 'domcontentloaded' })
+  // Demo roster edits are browser-only. Real roster checks explicitly select live mode.
+  await page.click('.mode-btn')
   await page.click('[aria-label="Settings"]')
   await page.waitForSelector('#office-theme')
   assert.equal(await page.$eval('#office-theme', element => element.value), 'warm', 'Appearance should survive a browser reload')
@@ -125,6 +128,7 @@ try {
   await page.evaluate(() => Array.from(document.querySelectorAll('button')).find(el => el.textContent?.includes('Save agent'))?.click())
   await page.waitForFunction(() => !document.querySelector('#agent-department'))
   await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.click('.mode-btn')
   await page.waitForFunction(() => document.querySelectorAll('.crew-card').length === 5)
   assert.equal((await api('/api/state')).agents.find(agent => agent.name === 'Firewall')?.department, 'security')
   await page.click('[aria-label="Office studio"]')
