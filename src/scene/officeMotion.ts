@@ -29,17 +29,17 @@ export function makeWalkRoute(seat: Seat, sector: Sector, slot: number): Route {
   return { points, durations, total: durations.reduce((sum, seconds) => sum + seconds, 0) + 12 }
 }
 
-export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { position: Point; walking: boolean; social: boolean; facing: number } {
+export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { position: Point; walking: boolean; resting: boolean; facing: number } {
   const home = route.points[0]
-  if (motion === 'off') return { position: home, walking: false, social: false, facing: Math.PI }
+  if (motion === 'off') return { position: home, walking: false, resting: false, facing: Math.PI }
   const factor = motion === 'subtle' ? .55 : 1
   const cycle = route.total / factor
   let remaining = ((seconds % cycle) + cycle) % cycle * factor
-  if (remaining < 3) return { position: home, walking: false, social: false, facing: Math.PI }
+  if (remaining < 3) return { position: home, walking: false, resting: false, facing: Math.PI }
   remaining -= 3
   for (let index = 0; index < route.durations.length; index++) {
     if (index === 4) {
-      if (remaining < 4) return { position: route.points[4], walking: false, social: true, facing: 0 }
+      if (remaining < 4) return { position: route.points[4], walking: false, resting: true, facing: 0 }
       remaining -= 4
     }
     const duration = route.durations[index]
@@ -49,24 +49,24 @@ export function walkAt(route: Route, seconds: number, motion: OfficeMotion): { p
       return {
         position: [start[0] + (end[0] - start[0]) * alpha, start[1] + (end[1] - start[1]) * alpha],
         walking: duration > .08,
-        social: false,
+        resting: false,
         facing: Math.atan2(end[0] - start[0], end[1] - start[1]),
       }
     }
     remaining -= duration
   }
-  return { position: home, walking: false, social: false, facing: Math.PI }
+  return { position: home, walking: false, resting: false, facing: Math.PI }
 }
 
-export type MovementStage = 'standing' | 'walking' | 'chatting' | 'returning' | 'approaching' | 'sitting' | 'working' | 'rising' | 'leaving'
+export type MovementStage = 'standing' | 'walking' | 'resting' | 'returning' | 'approaching' | 'sitting' | 'working' | 'rising' | 'leaving'
 export type MovementState = {
-  stage: MovementStage; position: Point; facing: number; seated: number; walking: boolean; social: boolean
+  stage: MovementStage; position: Point; facing: number; seated: number; walking: boolean
   cursor: number; waypoints: Point[]; wait: number; idleTime: number
 }
 
 export function createMovementState(route: Route): MovementState {
   return { stage: 'standing', position: [...route.points[0]], facing: DESK_FACING, seated: 0,
-    walking: false, social: false, cursor: 0, waypoints: [], wait: 0, idleTime: 0 }
+    walking: false, cursor: 0, waypoints: [], wait: 0, idleTime: 0 }
 }
 
 // A task event changes the movement goal, not the avatar's coordinates.
@@ -81,8 +81,7 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
   const front: Point = [chair[0], home[1] + CHAIR_APPROACH_Z - STAND_Z]
   const side: Point = [home[0], front[1]]
   next.walking = false
-  next.social = false
-  if ((active || motion === 'off') && (next.stage === 'walking' || next.stage === 'chatting')) {
+  if ((active || motion === 'off') && (next.stage === 'walking' || next.stage === 'resting')) {
     const outbound = next.cursor <= 4
     next.waypoints = outbound ? route.points.slice(0, next.cursor).reverse() : route.points.slice(next.cursor)
     next.cursor = 0
@@ -140,8 +139,7 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
     }
     return next
   }
-  if (next.stage === 'chatting') {
-    next.social = !active
+  if (next.stage === 'resting') {
     next.wait += step
     if (next.wait < 3.5) return next
     next.stage = 'walking'
@@ -196,7 +194,7 @@ export function advanceMovement(state: MovementState, route: Route, dt: number, 
   if (distance <= 1.35 * step + .0001) {
     next.position = [...target]
     next.cursor++
-    if (!returning && next.cursor === 5) { next.stage = 'chatting'; next.wait = 0; next.walking = false }
+    if (!returning && next.cursor === 5) { next.stage = 'resting'; next.wait = 0; next.walking = false }
     else if (next.cursor >= points.length) {
       next.stage = 'standing'
       next.cursor = 0

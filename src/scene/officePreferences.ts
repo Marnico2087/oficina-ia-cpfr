@@ -9,13 +9,12 @@ export type OfficePreferences = {
   spacing: OfficeSpacing
   motion: OfficeMotion
   accent: string
-  social: boolean
   sectorColors: Partial<Record<Department, string>>
 }
 
 export const OFFICE_PREFERENCES_KEY = 'agent-office-appearance-v1'
 export const DEFAULT_OFFICE_PREFERENCES: OfficePreferences = {
-  theme: 'daylight', spacing: 'regular', motion: 'lively', accent: '#547fc0', social: true, sectorColors: {},
+  theme: 'daylight', spacing: 'regular', motion: 'lively', accent: '#547fc0', sectorColors: {},
 }
 
 // Only accept known presentation values. Stored preferences are never interpreted as commands.
@@ -31,7 +30,6 @@ export function normalizeOfficePreferences(value: unknown): OfficePreferences {
     spacing: ['compact', 'regular', 'spacious'].includes(String(input.spacing)) ? input.spacing as OfficeSpacing : DEFAULT_OFFICE_PREFERENCES.spacing,
     motion: ['off', 'subtle', 'lively'].includes(String(input.motion)) ? input.motion as OfficeMotion : DEFAULT_OFFICE_PREFERENCES.motion,
     accent: typeof input.accent === 'string' && /^#[0-9a-fA-F]{6}$/.test(input.accent) ? input.accent : DEFAULT_OFFICE_PREFERENCES.accent,
-    social: typeof input.social === 'boolean' ? input.social : DEFAULT_OFFICE_PREFERENCES.social,
     sectorColors,
   }
 }

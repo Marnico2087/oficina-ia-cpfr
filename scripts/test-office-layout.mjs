@@ -38,25 +38,22 @@ test('avatar rig connects all limbs and aligns seated hands with mouse and keybo
   assert.ok(Math.abs(thinking.arms[1].wrist[1] - 1.50) < .025, 'thinking hand must reach chin vertically')
   assert.ok(Math.abs(thinking.arms[1].wrist[2] - .27) < .025, 'thinking hand must be near face')
   assert.deepEqual(thinking.arms[0], seated.arms[0], 'thinking must keep mouse hand at desk')
-  const beforeThought = makeAvatarRigPose(1, false, 1.25, 'thinking', 0, 0)
-  const midThought = makeAvatarRigPose(1, false, 1.25, 'thinking', 0, .5)
+  const beforeThought = makeAvatarRigPose(1, false, 1.25, 'thinking', 0)
+  const midThought = makeAvatarRigPose(1, false, 1.25, 'thinking', .5)
   for (let axis = 0; axis < 3; axis++) {
     const expected = (thinking.arms[1].wrist[axis] + beforeThought.arms[1].wrist[axis]) / 2
     assert.ok(Math.abs(midThought.arms[1].wrist[axis] - expected) < .001, 'thinking hand transition must be continuous')
   }
   const idle = makeAvatarRigPose(0, false, 1.25, 'idle')
-  const chatting = makeAvatarRigPose(0, false, 1.25, 'idle', 1)
-  assert.ok(chatting.arms[1].wrist[1] - idle.arms[1].wrist[1] > .3, 'social mode should move the actual arm')
-  assert.deepEqual(makeAvatarRigPose(1, false, 1.25, 'coding', 1).arms, seated.arms,
-    'conversational gestures cannot interrupt work at the desk')
-  assert.deepEqual(makeAvatarRigPose(0, true, 1.25, 'idle', 1).arms, makeAvatarRigPose(0, true, 1.25, 'idle').arms,
-    'walking cannot animate social gestures')
+  assert.deepEqual(idle.arms[0].wrist, [-.4, 1.02, .12],
+    'ambient idle animation must keep the arm in a neutral pose instead of inventing conversation')
+  assert.ok(idle.bob < .009 && idle.bob > -.009, 'idle breathing must remain subtle')
 })
 
 test('walking shoes use alternating planted steps with stable leg lengths', () => {
   const samples = Array.from({ length: 33 }, (_, index) => index * Math.PI * 2 / 32)
   for (const phase of samples) {
-    const pose = makeAvatarRigPose(0, 1, 0, 'idle', 0, 0, phase)
+    const pose = makeAvatarRigPose(0, 1, 0, 'idle', 0, phase)
     assert.ok(pose.legs.some(leg => Math.abs(leg.foot[1] - .078) < .00001), 'one shoe must remain planted')
     for (const leg of pose.legs) {
       const femur = Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i]))
@@ -69,14 +66,14 @@ test('walking shoes use alternating planted steps with stable leg lengths', () =
       assert.ok(leg.knee[1] > .60 && leg.knee[1] < .83, 'walking knee bends into crouch')
     }
   }
-  const stopped = makeAvatarRigPose(0, 0, 0, 'idle', 0, 0, 2)
-  const moving = makeAvatarRigPose(0, 1, 0, 'idle', 0, 0, 2)
-  const settling = makeAvatarRigPose(0, .5, 0, 'idle', 0, 0, 2)
+  const stopped = makeAvatarRigPose(0, 0, 0, 'idle', 0, 2)
+  const moving = makeAvatarRigPose(0, 1, 0, 'idle', 0, 2)
+  const settling = makeAvatarRigPose(0, .5, 0, 'idle', 0, 2)
   for (let leg = 0; leg < 2; leg++) {
     assert.ok(Math.abs(settling.legs[leg].foot[2] - (stopped.legs[leg].foot[2] + moving.legs[leg].foot[2]) / 2) < 1e-8)
   }
   for (const seated of [0, .2, .5, .8, 1]) {
-    const pose = makeAvatarRigPose(seated, .4, 0, 'coding', 0, 0, 1.7)
+    const pose = makeAvatarRigPose(seated, .4, 0, 'coding', 0, 1.7)
     for (const leg of pose.legs) {
       assert.ok(Math.abs(Math.hypot(...leg.hip.map((n, i) => n - leg.knee[i])) - .51) < .001, 'thigh stretches during seating')
       assert.ok(Math.abs(Math.hypot(...leg.knee.map((n, i) => n - leg.ankle[i])) - .50) < .001, 'shin stretches during seating')
@@ -226,6 +223,21 @@ test('work transitions return along walkways, sit at the monitor and rise cohere
   assert.deepEqual(state.position, route.points[0])
 })
 
+test('ambient idle walks pause without claiming a conversation or producing social gestures', () => {
+  const layout = makeOfficeLayout(makeTeam(2))
+  const seat = layout.seats[0]
+  const sector = layout.sectors.find(item => item.id === seat.sector)
+  const route = makeWalkRoute(seat, sector, 0)
+  let state = createMovementState(route)
+  let sawPause = false
+  for (let i = 0; i < 4000; i++) {
+    state = advanceMovement(state, route, .05, false, 'lively', 0)
+    assert.notEqual(state.stage, 'chatting', 'idle movement must not enter a conversation stage')
+    sawPause ||= state.stage === 'resting'
+  }
+  assert.equal(sawPause, true, 'the shared-space walk should include a neutral rest pause')
+})
+
 test('cancelling and restarting tasks during chair approach preserves continuous movement', () => {
   const layout = makeOfficeLayout(makeTeam(1))
   const route = makeWalkRoute(layout.seats[0], layout.sectors[0], 0)
@@ -254,7 +266,7 @@ test('appearance preferences reject invalid persisted values and accept user sel
   assert.equal(chosen.theme, 'warm')
   assert.equal(chosen.spacing, 'spacious')
   assert.equal(chosen.motion, 'off')
-  assert.equal(chosen.social, false)
+  assert.equal('social' in chosen, false, 'obsolete social-animation preference is ignored')
   assert.deepEqual(normalizeOfficePreferences({ sectorColors: { engineering: '#ff1133', hacker: '#ffffff', design: 'red' } }).sectorColors, { engineering: '#ff1133' })
 })
 

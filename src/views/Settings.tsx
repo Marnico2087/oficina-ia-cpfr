@@ -43,7 +43,6 @@ export function Settings({ workspace, setWorkspace, demo, setDemo, server, publi
               onChange={e => updatePreferences({ sectorColors: { ...preferences.sectorColors, [department.id]: e.target.value } })}/>
           </label>)}
         </div>
-        <div className="setting-row"><div><strong>{tr('Social animations')}</strong><span>{tr('Visual interactions are simulated, not real AI conversations.')}</span></div><button className={`switch ${preferences.social ? 'enabled' : ''}`} aria-label={tr('Social animations')} aria-pressed={preferences.social} onClick={() => updatePreferences({ social: !preferences.social })}><span/></button></div>
         <button className="office-reset" type="button" onClick={() => updatePreferences(DEFAULT_OFFICE_PREFERENCES)}>{tr('Restore office defaults')}</button>
       </section>
       <section className="setting-card">

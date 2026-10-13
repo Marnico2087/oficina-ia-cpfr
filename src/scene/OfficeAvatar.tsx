@@ -20,9 +20,9 @@ function fitBone(mesh: Mesh | undefined, start: RigPoint, end: RigPoint) {
   mesh.scale.y = length
 }
 
-export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef, seatedRef, socialRef }: {
+export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef, seatedRef }: {
   agent: OfficeAgent; pose: AgentPose; selected: boolean; onSelect: () => void
-  walkRef: RefObject<number>; gaitRef: RefObject<number>; seatedRef: RefObject<number>; socialRef: RefObject<boolean>
+  walkRef: RefObject<number>; gaitRef: RefObject<number>; seatedRef: RefObject<number>
 }) {
   const model = useRef<Group>(null)
   const torso = useRef<Group>(null)
@@ -36,7 +36,6 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
   const knees = useRef<Mesh[]>([])
   const shoes = useRef<Mesh[]>([])
   const halo = useRef<Mesh>(null)
-  const socialBlend = useRef(0)
   const thinkingBlend = useRef(0)
   const walkBlend = useRef(0)
   const skin = agent.id === 'sentinel' ? '#c48c70' : agent.id === 'pixel' ? '#efc8ab' : '#dbad8c'
@@ -44,10 +43,9 @@ export function OfficeAvatar({ agent, pose, selected, onSelect, walkRef, gaitRef
 
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime
-    socialBlend.current = MathUtils.damp(socialBlend.current, socialRef.current ? 1 : 0, 5, Math.min(delta, .05))
     thinkingBlend.current = MathUtils.damp(thinkingBlend.current, pose === 'thinking' ? 1 : 0, 4, Math.min(delta, .05))
     walkBlend.current = MathUtils.damp(walkBlend.current, walkRef.current, 8, Math.min(delta, .05))
-    const rig = makeAvatarRigPose(seatedRef.current, walkBlend.current, t, pose, socialBlend.current, thinkingBlend.current, gaitRef.current)
+    const rig = makeAvatarRigPose(seatedRef.current, walkBlend.current, t, pose, thinkingBlend.current, gaitRef.current)
     if (model.current) model.current.position.y = rig.bob + (pose === 'celebrating' && seatedRef.current < .01 ? Math.abs(Math.sin(t * 5)) * .035 : 0)
     if (torso.current) {
       torso.current.position.y = -rig.torsoDrop

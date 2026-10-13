@@ -135,7 +135,6 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
   const walkRef = useRef(0)
   const gaitRef = useRef(0)
   const seatedRef = useRef(0)
-  const socialRef = useRef(false)
   useFrame((_, delta) => {
     if (!traveler.current) return
     const previousPosition = movement.current.position
@@ -154,12 +153,11 @@ function Workstation({ seat, sector, ordinal, selected, pose, onSelect, preferen
     traveler.current.rotation.y += MathUtils.clamp(turn, -smoothing * 5, smoothing * 5)
     walkRef.current = frame.walking ? 1 : 0
     seatedRef.current = frame.seated
-    socialRef.current = Boolean(preferences.social && !working && frame.social && sector.count > 1)
   })
   return <group position={position}>
     <Desk color={agent.color} active={working} theme={preferences.theme} />
     <group ref={node => { traveler.current = node; if (node) avatars.current.set(agent.id, node); else avatars.current.delete(agent.id) }} position={[0, 0, STAND_Z]} rotation={[0, Math.PI, 0]}>
-      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} gaitRef={gaitRef} seatedRef={seatedRef} socialRef={socialRef}/>
+      <OfficeAvatar agent={agent} pose={pose} selected={selected} onSelect={onSelect} walkRef={walkRef} gaitRef={gaitRef} seatedRef={seatedRef}/>
     </group>
   </group>
 }
