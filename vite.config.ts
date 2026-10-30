@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: mode === 'public-demo' ? '/agent-office/' : '/',
+  base: mode === 'public-demo' ? '/oficina-ia-cpfr/' : '/',
   plugins: [react()],
   build: {
     rolldownOptions: {
