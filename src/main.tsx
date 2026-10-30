@@ -9,6 +9,6 @@ createRoot(document.getElementById('root')!).render(
 <LanguageProvider>
   <App />
     <DwightEstadoN8n />
-    </LanguageProvider>u
+    </LanguageProvider>
   </StrictMode>,
 )
